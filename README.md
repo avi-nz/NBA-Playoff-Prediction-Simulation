@@ -1,6 +1,16 @@
 # NBA Playoff Prediction Simulation
 Predicting NBA playoff outcomes using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
 
+## Content & Documentation
+This project is being documented publicly throughout development.
+
+### Content:
+
+#### 🎥 Full project breakdown video
+
+#### 📱 Development shorts/reels
+
+#### ✍️ Technical Substack articles
 
 ## Overview
 This project explores how accurately NBA playoff outcomes can be predicted using only information available before the playoffs begin.
@@ -180,17 +190,6 @@ Evaluation process:
     * Comparing the forecasted champion to the real champion
     * Comparing results from each round
     * Comparing Games Won/Lost from each team
-
-## Content & Documentation
-This project is being documented publicly throughout development.
-
-### Content:
-
-#### 🎥 Full project breakdown video
-
-#### 📱 Development shorts/reels
-
-#### ✍️ Technical Substack articles
 
 
 
