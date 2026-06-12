@@ -1,7 +1,11 @@
-from nba_api.stats.endpoints import playercareerstats
+from nba_api.stats.endpoints import leaguegamelog
+import pandas as pd
 
-# Nikola Jokić
-career = playercareerstats.PlayerCareerStats(player_id='203999')
+games = leaguegamelog.LeagueGameLog(
+    season='2025-26',
+    season_type_all_star='Regular Season'
+)
 
-# pandas data frames (optional: pip install pandas)
-print(career.season_totals_regular_season.get_data_frame())
+df = games.get_data_frames()[0]
+
+print(df.head())
