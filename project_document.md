@@ -8,7 +8,7 @@ For this project, I am using the NBA API.
 
 My first approach was to use leagueGameLog from the NBA API and load it into a pandas data frame 
 
-```
+```python
 games = leaguegamelog.LeagueGameLog(
     season='2025-26',
     season_type_all_star='Regular Season'
@@ -17,13 +17,13 @@ games = leaguegamelog.LeagueGameLog(
 df = games.get_data_frames()[0]
 ```
 
-This loads in data team wise (this is an important detail which we
+This loads in data team-wise (this is an important detail, which we
 will see later).
-Because this endpoint is team-centric (as opposed to game game-centric)
-it returns one row per team. Therefore, each game will appear twice.
+Because this endpoint is team-centric (as opposed to game-centric)
+It returns one row per team. Therefore, each game will appear twice.
 Thus, we must merge them into a single game.
 
-```
+```python
 games_df = df.sort_values("GAME_DATE")
 
 grouped = []
@@ -51,11 +51,11 @@ games = pd.DataFrame(grouped)
 games = games.sort_values("DATE")
 ```
 
-We can do this my first sorting the games by when they were played so the teams that play
+We can do this my first sorting the games by when they were played, so the teams that play
 each other on the same night will be next to each other.
-Then we need make sure that there are two teams playing on each given night. If not then skip that date.
-Assign one team to team A and the other to Team B and also store other important information such as
-the game_ID the team names and also what was the score of each team so we can see who won the game.
+Then we need to make sure there are two teams playing each night. If not, then skip that date.
+Assign one team to Team A and the other to Team B, and also store other important information such as
+the game_ID, the team names, and also what was the score of each team so we can see who won the game.
 
 ```
          GAME_ID        DATE  ... TEAM_A_PTS TEAM_B_PTS
@@ -74,23 +74,23 @@ the game_ID the team names and also what was the score of each team so we can se
 
 And, as you can see by the output, this worked!
 
-We now use simple maths to determine who won each game by seeing which team had the higher score.
+We now use simple maths to determine who won each game by comparing the teams' scores.
 
 However, there was one issue. I did not know which team was the home team and which was the away team.
-This is not currently important to me at this stage, however I plan on adding another layers/iterations of this 
-simulation one of which includes seeing if home court advantage makes a difference (and obviously for that I would need
-to know who the home team is). Thus, for the sake of future proofing, I wanted to see if I can get the data to tell us 
+This is not currently important to me at this stage; however, I plan on adding another layers/iterations of this 
+simulation, one of which includes seeing if home court advantage makes a difference (and obviously, for that, I would need
+to know who the home team is). Thus, for the sake of future proofing, I wanted to see if I could get the data to tell us 
 who is the home team and who is the away team.
 
-a solution that I thought of was to use some sort of phrasing system.
+A solution I considered was to use some sort of phrasing system.
 The NBA uses @ symbol for when a team is 'on the road' i.e they are the away team but for home teams they use v.s.
 
 For example...
 
 OKC @ HOU - This would mean that OKC are the away team and they are playing HOU (who are the home team)
-MIN v.s SAS - THis would mean that the MIN are the home team and they are facing SAS (who are the away team)
+MIN v.s SAS - This would mean that the MIN are the home team and they are facing SAS (who are the away team)
 
-Therefore, I printed out the matchup to the terminal so I could see the format, and this is what I found...
+Therefore, I printed the matchup to the terminal to see the format, and this is what I found...
 ```
 -------------------------------------------------- 
 TEAM_NAME MATCHUP 
@@ -117,14 +117,14 @@ TEAM_NAME MATCHUP
 
 (NOTE: This is only a select sample size)
 
-As you can see most of the data was formatted as expected. However, if we look at the last two, we can see that both
-use the '@' symbol which does not make sense because both team cannot be at home.
+As you can see, most of the data was formatted as expected. However, if we look at the last two, we can see that both
+Use the '@' symbol, which does not make sense because both teams cannot be at home.
 
-After some messing around I decided to no longer use this data set and move onto another because it became apparent 
-that figuring out who was the home and away team with this data set would be more challenging that what it was worth.
+After some messing around, I decided to no longer use this data set and move on to another because it became apparent 
+Figuring out who was the home and away team with this data set would be more challenging than it was worth.
 
-This issue with this data set is that it is **team-centric** meaning it shows the result of each team (which is why we 
-get double ups for each game). What will be better for we are trying to achieve is a game-centric data set meaning the 
+This issue with this data set is that it is **team-centric**, meaning it shows the result of each team (which is why we 
+get double-ups for each game). What will be better for we are trying to achieve is a game-centric data set, meaning the 
 data shows the result of each game.
 
 #### Team-centric data set:
