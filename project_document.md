@@ -1,4 +1,4 @@
-# NBA Playoff Prediction Simulator 
+# NBA Playoff Prediction Simulator Project Development Document
 ***
 
 ## Loading in the data...
