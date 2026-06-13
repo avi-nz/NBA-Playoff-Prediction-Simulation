@@ -227,7 +227,7 @@ Bad games found: 5
 ```
 
 In the 2025-26 season there were 5 'bad' games. Because we have the game ID I searched these games on google and turns 
-out these games are apart of the NBA Cup. Which is a mid-season tournament, where the final games are held in Las Vegas
+out these games were apart of the NBA Cup. Which is a mid-season tournament, where the final games are held in Las Vegas
 which is a neutral site, meaning there is no home or away team. Thus, the matchup does not follow the conventional format.
 
 This is what I mean when I say that this turns out to be a feature not a bug.
@@ -236,5 +236,59 @@ So therefore there is nothing wrong with this data set and we can continue to us
 account that these games are played on a neutral site.
 
 As a result, I decided to continue using ```LeagueGameLog``` as the project's primary data source.
+
+***
+Now that we have figured out that the 'bad' games were apart of the NBA Cup, we can add some code to detect these games 
+so we can label them appropriately.
+
+I added a list ```neutral_games = []``` so I can keep track of the amount of neutral games.
+
+```python
+# Case 2: neutral site game (NBA Cup / special games)
+# len of away = 2 cause both teams are marked as away when there is a neutral site.
+elif len(home) == 0 and len(away) == 2:
+
+    # in neutral games, BOTH rows usually have "@"
+    # so we just take both teams safely
+    team_a = game.iloc[0]
+    team_b = game.iloc[1]
+
+    neutral_games.append(game_id)
+
+    grouped_games.append({
+        "GAME_ID": game_id,
+        "DATE": team_a["GAME_DATE"],
+
+        "HOME_TEAM": "TEAM_A",
+        "AWAY_TEAM": "TEAM_B",
+
+        "HOME_PTS": team_a["PTS"],
+        "AWAY_PTS": team_b["PTS"],
+
+        "SITE_TYPE": "NEUTRAL"
+            })
+```
+I then add an if statement which checks if the length of the away teams is equal 2 and also the length of the home teams 
+is 1. The reason why this works is because the data shows...
+```
+DAL @ DET
+DET @ DAL
+```
+Meaning both teams are marked as 'away' so therefore...
+```python
+home = game[game["MATCHUP"].str.contains("vs.", regex=False)]
+away = game[game["MATCHUP"].str.contains("@", regex=False)]
+```
+Gives...
+```python
+len(home) == 0
+len(away) == 2
+```
+
+I then also added a tag ```SITE_TYPE```
+```python
+SITE_TYPE = "HOME_AWAY" | "NEUTRAL"
+```
+To show if a game is a traditional home/away game or if it is played on a neutral site.
 
 
