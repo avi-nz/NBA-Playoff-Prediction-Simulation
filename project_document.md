@@ -1,4 +1,5 @@
 # NBA Playoff Prediction Simulator 
+***
 
 ## Loading in the data...
 
@@ -141,3 +142,99 @@ data shows the result of each game.
 
 
 ### Attempt 2:
+After some research I have decided to pivot away from the Game-centric data set and go back to the Team-centric data
+set 😂
+
+#### Why go back to Team-Centric before even trying Game-centric?
+Initially, I considered switching to a game-centric endpoint such as ```ScoreboardV2``` because it directly provides game-level 
+information, including home and away teams. This would eliminate the need to merge team records together and would make 
+home-court analysis much easier.
+
+However, after investigating the API further, I realised that using a game-centric approach would significantly 
+increase the number of API requests required.
+
+The ```LeagueGameLog``` endpoint allows an entire season's worth of games to be downloaded in a single request. Although the 
+data is team-centric and each game appears twice, all regular season results are immediately available and can be 
+cleaned with a relatively small amount of preprocessing.
+
+By contrast, ```ScoreboardV2``` is designed around individual dates. To reconstruct an entire season, 
+I would need to query the endpoint separately for every day of the NBA calendar and then combine all of the returned 
+data. A full NBA season spans roughly six months, meaning well over 170 API requests would be required just to collect 
+the same information that ```LeagueGameLog``` provides in a single call.
+
+In addition to being slower, this approach introduces several disadvantages:
+
+Increased runtime due to hundreds of API calls.
+Greater likelihood of request failures or rate limiting.
+More complex data collection and storage pipelines.
+Additional code required to merge and validate data from multiple responses.
+
+Because my primary objective is to build an Elo-based playoff prediction model rather than a data collection system, 
+the simplicity of ```LeagueGameLog``` outweighs the inconvenience of having to identify home and away teams manually.
+
+As I will discuss later on, I discovered that the apparent matchup inconsistencies were actually neutral-site NBA Cup 
+games rather than data errors, the main reason for abandoning the team-centric dataset disappeared
+
+#### What about the issue of figuring out which team was at Home vs Away?
+Turns out that this was not a bug, but a feature 😂😂😂
+
+```python
+bad_games = []
+
+for game_id, game in games_df.groupby("GAME_ID"):
+
+    home = game[game["MATCHUP"].str.contains("vs.", regex=False)]
+    away = game[game["MATCHUP"].str.contains("@", regex=False)]
+
+    if len(home) != 1 or len(away) != 1:
+        bad_games.append(game_id)
+        continue
+```
+I went through and stored all the 'bad' games in a list to see how many there were and also to see which games were 'bad'.
+This is what I found...
+```
+Bad Game ID: 0022500147
+            TEAM_NAME    MATCHUP
+168  Dallas Mavericks  DAL @ DET
+165   Detroit Pistons  DET @ DAL
+--------------------------------------------------
+
+Bad Game ID: 0022500578
+              TEAM_NAME    MATCHUP
+1209  Memphis Grizzlies  MEM @ ORL
+1207      Orlando Magic  ORL @ MEM
+--------------------------------------------------
+
+Bad Game ID: 0022500602
+              TEAM_NAME    MATCHUP
+1261  Memphis Grizzlies  MEM @ ORL
+1256      Orlando Magic  ORL @ MEM
+--------------------------------------------------
+
+Bad Game ID: 0022501229
+           TEAM_NAME    MATCHUP
+747    Orlando Magic  ORL @ NYK
+746  New York Knicks  NYK @ ORL
+--------------------------------------------------
+
+Bad Game ID: 0022501230
+                 TEAM_NAME    MATCHUP
+745  Oklahoma City Thunder  OKC @ SAS
+744      San Antonio Spurs  SAS @ OKC
+--------------------------------------------------
+
+Bad games found: 5
+```
+
+In the 2025-26 season there were 5 'bad' games. Because we have the game ID I searched these games on google and turns 
+out these games are apart of the NBA Cup. Which is a mid-season tournament, where the final games are held in Las Vegas
+which is a neutral site, meaning there is no home or away team. Thus, the matchup does not follow the conventional format.
+
+This is what I mean when I say that this turns out to be a feature not a bug.
+
+So therefore there is nothing wrong with this data set and we can continue to use it and all we have to do it take into 
+account that these games are played on a neutral site.
+
+As a result, I decided to continue using ```LeagueGameLog``` as the project's primary data source.
+
+
