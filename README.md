@@ -2,14 +2,12 @@
 Predicting NBA playoff outcomes using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
 
 ## Content & Documentation
-This project is being documented publicly throughout development.
 
 ### Project Development Journal:
 Read about the development journey for this project. All the ups and downs, wins and losses - [Project Development Journal](project_document.md)
 
-
-
 ### Content:
+This project is being documented publicly throughout development.
 
 #### 🎥 Full project breakdown video
 
