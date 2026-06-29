@@ -53,8 +53,8 @@ def load_regular_season_games(season):
                 "GAME_ID": game_id,
                 "DATE": team_a["GAME_DATE"],
 
-                "HOME_TEAM": "TEAM_A",
-                "AWAY_TEAM": "TEAM_B",
+                "HOME_TEAM": team_a["TEAM_NAME"],
+                "AWAY_TEAM": team_b["TEAM_NAME"],
 
                 "HOME_PTS": team_a["PTS"],
                 "AWAY_PTS": team_b["PTS"],
