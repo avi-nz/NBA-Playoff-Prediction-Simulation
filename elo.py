@@ -108,8 +108,6 @@ class EloModel:
 
         prob_a = self.win_probability(team_a, team_b)
 
-        prob_a = self.win_probability(team_a, team_b)
-
         actual_a = 1 if winner == team_a else 0
 
         self.ratings[team_a] += self.k * (actual_a - prob_a)

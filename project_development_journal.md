@@ -461,3 +461,336 @@ Washington Wizards 1268.244296132625
 
 Thus, based on this basic elo model we can see that the San Antonio Spurs are the best team in the NBA. This result is 
 not surprising as the Spurs made it to the NBA Finals that year
+
+
+## Building the Playoff Simulator
+With the Elo ratings fully trained on the regular season dataset, the final stage of the project was to build a 
+playoff simulation engine. The purpose of this component is to take the final Elo ratings and repeatedly simulate 
+playoff series to estimate championship probabilities.
+
+At a high level, the simulator does three things:
+1. Translates Elo ratings into single-game win probabilities
+2. Simulates individual playoff games using randomness
+3. Aggregates game outcomes into series and then full playoff brackets
+
+This allows us to move from a deterministic ranking (Elo table) to a probabilistic forecast of playoff outcomes.
+
+### Designing the Simulation Structure
+Before writing any code, it was important to define the structure of an NBA playoff simulation.
+
+The NBA playoffs are not a single-elimination tournament, they are a multi-round, best-of-seven series format. 
+This introduces two key requirements:
+
+* We must simulate series outcomes, not just games
+* We must track bracket progression dynamically, since later matchups depend on earlier results
+
+To handle this, the simulator was structured into three core components:
+
+* ```simulate_game()``` → simulates a single game
+* ```simulate_series()``` → simulates a best-of-seven matchup
+* ```simulate_playoffs()``` → runs the full bracket
+
+This separation ensures each layer of logic remains modular and testable.
+
+### Core Function 1: Simulating a Single Game
+At the lowest level, each game is simulated using the Elo-derived win probability:
+```python
+def simulate_game(self, team_a_id, team_b):
+    prob = self.elo.win_probability(team_a_id, team_b)
+
+    if random.random() < prob:
+        return team_a_id
+```
+This function is the bridge between deterministic modeling and stochastic simulation.
+
+* The Elo model gives a probability (e.g. 0.63)
+* The simulator introduces randomness
+* The result mimics real-world unpredictability
+
+Without this step, the model would always output the higher-rated team winning,
+meaning there would be no variance and no meaningful playoff distribution.
+
+### Core Function 2: Simulating a Series (Best of 7)
+The NBA playoffs are decided by series, not single games, so we extend the simulation:
+```python
+def simulate_series(self, team_a, team_b):
+
+    wins = {
+        team_a: 0,
+        team_b: 0
+    }
+
+    games_played = 0
+
+    while wins[team_a] < 4 and wins[team_b] < 4:
+        winner = self.simulate_game(team_a, team_b)
+
+        wins[winner] += 1
+        games_played += 1
+
+    if wins[team_a] == 4:
+        winner = team_a
+        loser = team_b
+    else:
+        winner = team_b
+        loser = team_a
+
+    return {
+        "winner": winner,
+        "loser": loser,
+        "games": games_played,
+        "wins": wins.copy()
+    }
+```
+This function reflects real NBA dynamics where better teams are more likely to win over multiple games.
+Thus, it reduces variance compared to single-game outcomes
+
+Even a weaker team can win a game, but winning four times before the opponent is significantly harder, and this is
+what Elo is designed to capture.
+
+### Core Function 3: Simulating the Conference
+While the earlier functions handle games and series in isolation, the NBA playoffs are structured around 
+conference-based brackets. Each conference (Eastern and Western) produces one finalist, 
+and only then do the winners meet in the NBA Finals.
+
+To model this correctly, an additional layer was introduced: the ```simulate_conference()``` function.
+```python
+def simulate_conference(self, teams):
+
+    # First Round
+    first_round = [
+        self.simulate_series(teams[0], teams[7]),  # 1 vs 8
+        self.simulate_series(teams[3], teams[4]),  # 4 vs 5
+        self.simulate_series(teams[1], teams[6]),  # 2 vs 7
+        self.simulate_series(teams[2], teams[5])  # 3 vs 6
+    ]
+
+    # Conference Semifinals
+    semifinals = [
+        self.simulate_series(
+            first_round[0]["winner"],
+            first_round[1]["winner"]
+        ),
+
+        self.simulate_series(
+            first_round[2]["winner"],
+            first_round[3]["winner"]
+        )
+    ]
+
+    # Conference Finals
+    conference_finals = self.simulate_series(
+        semifinals[0]["winner"],
+        semifinals[1]["winner"]
+    )
+
+    return {
+        "first_round": first_round,
+        "semifinals": semifinals,
+        "conference_finals": conference_finals,
+        "winner": conference_finals["winner"]
+    }
+```
+
+This function takes a list of 8 teams ordered by playoff seeding and simulates an entire conference bracket from the 
+first round through to the conference champion.
+
+#### First Round (Quarterfinals):
+```python
+first_round = [
+    self.simulate_series(teams[0], teams[7]),  # 1 vs 8
+    self.simulate_series(teams[3], teams[4]),  # 4 vs 5
+    self.simulate_series(teams[1], teams[6]),  # 2 vs 7
+    self.simulate_series(teams[2], teams[5])   # 3 vs 6
+]
+```
+
+This explicitly encodes the NBA playoff seeding logic:
+
+* Higher seeds are rewarded with theoretically easier matchups
+* The bracket is fixed (not re-seeded each round)
+* Upsets are still possible due to Elo-based randomness
+
+Each ```simulate_series()``` call produces a dictionary containing:
+
+* winner
+* series outcome (optional metadata like games won/lost)
+
+This structure is important because it preserves traceability of each round, not just the final result.
+
+#### Conference Semifinals:
+```python
+semifinals = [
+    self.simulate_series(
+        first_round[0]["winner"],
+        first_round[1]["winner"]
+    ),
+
+    self.simulate_series(
+        first_round[2]["winner"],
+        first_round[3]["winner"]
+    )
+]
+```
+Instead of recomputing or flattening results, the model explicitly uses:
+```python
+first_round[i]["winner"]
+```
+This ensures:
+
+* Bracket dependencies are preserved
+* No re-sorting or recalculating is required
+* The simulation remains deterministic in structure but stochastic in outcome
+
+#### Conference Finals:
+```python
+conference_finals = self.simulate_series(
+    semifinals[0]["winner"],
+    semifinals[1]["winner"]
+)
+```
+At this stage, only two teams remain. The result determines the conference champion, who advances to the NBA Finals.
+
+### Core Function 4: Simulating the Full Playoff Bracket
+```python
+def simulate_playoffs(self, east, west):
+    east_results = self.simulate_conference(east)
+    west_results = self.simulate_conference(west)
+
+    finals = self.simulate_series(
+        east_results["winner"],
+        west_results["winner"]
+    )
+
+    return {
+        "east": east_results,
+        "west": west_results,
+        "finals": finals,
+        "champion": finals["winner"]
+    }
+```
+
+Once individual conference brackets were defined, the next step was to combine both conferences into a complete NBA playoff system.
+
+This is handled by the ```simulate_playoffs()``` function.
+
+#### Conference-Level Simulation:
+```python
+east_results = self.simulate_conference(east)
+west_results = self.simulate_conference(west)
+```
+Each conference is simulated independently using the previously defined bracket logic.
+
+This reflects the real NBA structure:
+
+* Eastern Conference produces 1 champion
+* Western Conference produces 1 champion
+* These two teams advance to the Finals
+
+This separation is important because it preserves conference independence until the Finals, exactly like the 
+real league format.
+
+#### NBA Finals Simulation:
+```python
+finals = self.simulate_series(
+    east_results["winner"],
+    west_results["winner"]
+)
+```
+The Finals are treated as a standard best-of-seven series, consistent with earlier modeling assumptions.
+
+#### Output Structure:
+```python
+return {
+    "east": east_results,
+    "west": west_results,
+    "finals": finals,
+    "champion": finals["winner"]
+}
+```
+
+Instead of only returning the champion, the function returns the entire playoff pathway.
+
+This enables:
+
+* Path analysis (how each team reached elimination or victory)
+* Upset tracking across rounds
+* Debugging of bracket behavior
+* Later visualization of full playoff trees
+
+In other words, the model is not only predictive, it is also fully traceable.
+
+### Core Function 5: Monte Carlo Playoff Simulation
+While a single playoff simulation gives one possible outcome, the real goal is to estimate probabilities, 
+not deterministic results.
+
+To achieve this, a Monte Carlo simulation is introduced via ```simulate_many()```.
+
+#### Running Repeated Simulations:
+```python
+champions = {}
+
+for _ in range(n_simulations):
+    results = self.simulate_playoffs(east, west)
+    champion = results["champion"]
+    champions[champion] = champions.get(champion, 0) + 1
+```
+
+Each iteration:
+
+* Runs a full playoff simulation
+* Extracts the champion
+* Updates a frequency counter
+
+Over many iterations, this builds a distribution of championship outcomes.
+
+#### Converting Counts into Probabilities:
+```python
+for team in champions:
+    champions[team] /= n_simulations
+```
+This normalises raw counts into probabilities:
+$$
+P(\text{champion}) = \frac{\text{number of wins}}{\text{total simulations}}
+$$
+
+The output is a dictionary of the form:
+```python
+{
+    "Boston Celtics": 0.21,
+    "Denver Nuggets": 0.18,
+    "OKC Thunder": 0.15,
+    ...
+}
+```
+
+### The Critical Issue: Team Identity Mismatch Across Files:
+At this stage, a major issue emerged. The team identifiers used in the Elo model did not consistently match the 
+identifiers used in the playoff simulator input.
+
+What caused the problem
+
+The Elo model used:
+
+* TEAM_NAME from ```LeagueGameLog```
+* Full franchise names like "Los Angeles Lakers"
+
+However, the playoff simulator input was built from:
+
+* Abbreviations like "LAL"
+* Or sometimes mixed formats like "LA Lakers"
+
+This created a failure:
+
+* Elo lookup worked for "Los Angeles Lakers"
+* But playoff simulation queried "LAL"
+* Result: missing keys, incorrect mappings, or crashes
+
+This reveals a key assumption flaw:
+
+I assumed all NBA datasets use a consistent team identifier format.
+
+They do not.
+
+#### The Fix:
+
