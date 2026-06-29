@@ -291,4 +291,117 @@ SITE_TYPE = "HOME_AWAY" | "NEUTRAL"
 ```
 To show if a game is a traditional home/away game or if it is played on a neutral site.
 
+This additional variable allows later versions of the Elo model to distinguish between traditional home-court games 
+and neutral-site games. Home-court advantage can therefore be incorporated into the rating updates while ensuring that 
+neutral-site games receive no such adjustment.
 
+At this point, the data preprocessing pipeline was complete. Every regular season game had been converted into a 
+single game-level observation containing the competing teams, the final scores, the game date and the site type 
+(home/away or neutral). This cleaned dataset forms the input to the Elo rating system described in the next section.
+
+## Building the Elo Rating System
+
+With a reliable game dataset available, the next stage of the project was to develop an Elo rating system capable of 
+estimating team strength throughout the season. Elo ratings provide a simple yet effective method for updating a team's 
+estimated ability after every game based on the expected and actual outcome. These ratings will later form the 
+foundation of the playoff prediction simulator.
+
+### Why Elo?
+The Elo rating system was originally developed by Arpad Elo for ranking chess players but has since become widely used 
+in many sports due to its simplicity and effectiveness.
+
+The main advantage of Elo is that it provides a dynamic measure of team strength. Instead of relying solely on wins 
+and losses, the rating adjusts based on how expected the result was. For example, if a highly rated team defeats a 
+much weaker team, only a small rating adjustment is made because the result was expected. Conversely, if an underdog 
+defeats a highly rated opponent, both teams receive a much larger rating adjustment.
+
+This continual updating process allows the ratings to evolve throughout the season as 
+teams improve or decline in performance. These ratings can then be used to estimate the probability of 
+future game outcomes, making Elo an ideal foundation for a Monte Carlo playoff simulator.
+
+### Expected Win Probability
+Before updating the ratings, the model first estimates the probability that one team will defeat another using the 
+standard Elo probability equation:
+
+$$
+P(A)=\frac{1}{1+10^{-(R_A-R_B)/400}}
+$$
+
+where:
+* $R_A$ is Team A's current Elo rating.
+* $R_B$ is Team B's current Elo rating.
+
+If both teams have identical ratings, each team has a predicted 50% chance of winning. 
+As the rating difference increases, the higher-rated team receives a greater expected probability of victory.
+
+This probability is calculated by the ```win_probability()``` method:
+```python
+def win_probability(self, team_a, team_b): 
+    rating_a = self.ratings[team_a] 
+    rating_b = self.ratings[team_b] 
+    
+    return 1 / (1 + 10 ** (-(rating_a - rating_b) / 400))
+```
+
+### Rating Updates
+After each game, the predicted probability is compared with the actual result.
+
+If the higher-rated team wins as expected, only a small rating adjustment is made.
+
+If the lower-rated team wins unexpectedly, a much larger adjustment is applied.
+
+The model updates the ratings using:
+
+```rating += K × (Actual − Expected)```
+
+where:
+* Actual is either 1 (win) or 0 (loss).
+* Expected is the predicted win probability.
+* K controls how quickly ratings change.
+
+This allows the ratings to continually adapt throughout the season while remaining relatively stable over long periods.
+
+### Choice of K-Factor
+The K-factor determines the sensitivity of the Elo system.
+
+For this project a value of:
+
+```K = 20```
+
+was selected.
+
+A larger K-factor causes ratings to change rapidly after every game, making the system highly responsive but also more 
+volatile. Conversely, a smaller K-factor results in more stable ratings that require many games before significant 
+changes occur.
+
+A value of 20 provides a balance between stability and responsiveness and is commonly used as a starting point in 
+many Elo implementations. Future iterations of this project may investigate alternative K-values through backtesting 
+to determine which produces the most accurate predictions.
+
+### Initial Team Ratings
+At the beginning of each season, every NBA team is assigned an initial Elo rating of:
+
+1500
+
+This represents a neutral starting point where all teams are assumed to have equal strength 
+before any games have been played.
+
+As the season progresses, ratings gradually diverge according to each team's performance.
+
+### Implementation of the EloModel Class
+The Elo rating system was implemented as a dedicated EloModel class to separate the rating logic 
+from the data-loading process.
+
+The class contains several methods, each responsible for a specific task:
+* ```__init__()``` initialises the model parameters, including the K-factor, the initial rating, a dictionary of 
+current team ratings, and a history list for storing Elo progression.
+* ```initialize_teams()``` identifies every team appearing in the dataset and assigns each an initial rating of 1500.
+* ```win_probability()``` calculates the expected probability that one team will defeat another using the Elo 
+probability equation.
+* ```update_ratings()``` updates both teams' ratings after every game according to the predicted and actual outcomes.
+* ```fit()``` iterates through every game in chronological order, determines the winner, updates both teams' ratings, 
+and records the new ratings in the history log.
+* ```get_ratings()``` returns the current Elo ratings for all teams.
+* ```get_rankings()``` sorts the teams from highest to lowest Elo rating.
+* ```get_history()``` converts the stored rating history into a pandas DataFrame, allowing the ratings to be 
+analysed or visualised later.
