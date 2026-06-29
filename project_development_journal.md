@@ -424,4 +424,40 @@ and records the new ratings in the history log.
 * ```get_history()``` converts the stored rating history into a pandas DataFrame, allowing the ratings to be 
 analysed or visualised later.
 
+## Elo Result...
+Here is the result from running the elo simulation for the 2025-26 NBA season:
+```
+San Antonio Spurs 1702.7645765619857
+Oklahoma City Thunder 1693.6747482082196
+Boston Celtics 1656.345444496241
+Detroit Pistons 1652.6099324003906
+Denver Nuggets 1638.6895665011407
+Los Angeles Lakers 1609.632198194759
+New York Knicks 1606.8051076985585
+Cleveland Cavaliers 1603.5980557776145
+Houston Rockets 1588.8950374336653
+Charlotte Hornets 1587.7282815929339
+Atlanta Hawks 1571.8963115964827
+Minnesota Timberwolves 1557.7172397527734
+Orlando Magic 1541.4554404251562
+LA Clippers 1535.8021863401527
+Philadelphia 76ers 1529.8455993351906
+Toronto Raptors 1527.4355117006967
+Portland Trail Blazers 1524.2142524023357
+Phoenix Suns 1519.0317086414063
+Miami Heat 1507.3732636074249
+Golden State Warriors 1425.1232739956627
+Milwaukee Bucks 1401.2519703906705
+New Orleans Pelicans 1398.6174368268241
+Chicago Bulls 1369.1993750860888
+Dallas Mavericks 1365.6256767394816
+Sacramento Kings 1358.4148470914922
+Indiana Pacers 1326.0412021621241
+Memphis Grizzlies 1311.2574256013738
+Utah Jazz 1310.45582266104
+Brooklyn Nets 1310.2542106454882
+Washington Wizards 1268.244296132625
+```
 
+Thus, based on this basic elo model we can see that the San Antonio Spurs are the best team in the NBA. This result is 
+not surprising as the Spurs made it to the NBA Finals that year
