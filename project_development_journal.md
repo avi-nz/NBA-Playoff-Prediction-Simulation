@@ -423,3 +423,7 @@ and records the new ratings in the history log.
 * ```get_rankings()``` sorts the teams from highest to lowest Elo rating.
 * ```get_history()``` converts the stored rating history into a pandas DataFrame, allowing the ratings to be 
 analysed or visualised later.
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7d04efb (added documentation on the elo.py file)
