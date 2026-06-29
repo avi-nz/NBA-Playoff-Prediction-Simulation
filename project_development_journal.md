@@ -307,8 +307,8 @@ estimated ability after every game based on the expected and actual outcome. The
 foundation of the playoff prediction simulator.
 
 ### Why Elo?
-The Elo rating system was originally developed by Arpad Elo for ranking chess players but has since become widely used 
-in many sports due to its simplicity and effectiveness.
+The Elo rating system was originally developed by Arpad Elo for ranking chess players, but has since become widely used 
+In many sports, due to its simplicity and effectiveness.
 
 The main advantage of Elo is that it provides a dynamic measure of team strength. Instead of relying solely on wins 
 and losses, the rating adjusts based on how expected the result was. For example, if a highly rated team defeats a 
@@ -320,11 +320,13 @@ teams improve or decline in performance. These ratings can then be used to estim
 future game outcomes, making Elo an ideal foundation for a Monte Carlo playoff simulator.
 
 ### Expected Win Probability
-The Elo rating system does not compare two teams' ratings directly. Instead, it converts the difference between their 
+The Elo rating system does not directly compare two teams' ratings. Instead, it converts the difference between their 
 ratings into a predicted probability of winning.
 
 This conversion is performed using a sigmoid function. A sigmoid function is a mathematical function that 
 maps any real number onto a value between 0 and 1, making it ideal for representing probabilities.
+
+<img width="1217" height="960" alt="Screenshot 2026-06-29 at 15 55 02" src="https://github.com/user-attachments/assets/85df86c0-52fa-4f8a-9a21-3b36b0e3b0ec" />
 
 The Elo system uses the following sigmoid equation:
 
