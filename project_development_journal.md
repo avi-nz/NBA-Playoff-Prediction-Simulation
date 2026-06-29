@@ -320,8 +320,13 @@ teams improve or decline in performance. These ratings can then be used to estim
 future game outcomes, making Elo an ideal foundation for a Monte Carlo playoff simulator.
 
 ### Expected Win Probability
-Before updating the ratings, the model first estimates the probability that one team will defeat another using the 
-standard Elo probability equation:
+The Elo rating system does not compare two teams' ratings directly. Instead, it converts the difference between their 
+ratings into a predicted probability of winning.
+
+This conversion is performed using a sigmoid function. A sigmoid function is a mathematical function that 
+maps any real number onto a value between 0 and 1, making it ideal for representing probabilities.
+
+The Elo system uses the following sigmoid equation:
 
 $$
 P(A)=\frac{1}{1+10^{-(R_A-R_B)/400}}
@@ -331,8 +336,19 @@ where:
 * $R_A$ is Team A's current Elo rating.
 * $R_B$ is Team B's current Elo rating.
 
-If both teams have identical ratings, each team has a predicted 50% chance of winning. 
-As the rating difference increases, the higher-rated team receives a greater expected probability of victory.
+The key advantage of using a sigmoid function is that it produces sensible probabilities regardless of how large or 
+small the rating difference becomes. If both teams have identical ratings, the rating difference is zero and the 
+predicted probability is exactly 0.5, meaning each team has an equal chance of winning. As the rating difference 
+increases, the predicted probability gradually approaches 1 for the stronger team and 0 for the weaker team, without 
+ever exceeding these limits.
+
+The constant value of 400 controls the steepness of the logistic curve. A rating advantage of approximately 100 points 
+corresponds to an expected win probability of around 64%, while a 200-point advantage corresponds to roughly 76%. 
+Larger rating differences therefore produce increasingly confident predictions while still allowing upsets to occur.
+
+This probability is then used to determine how much each team's rating should change after the game. Expected 
+victories produce only small rating adjustments, whereas unexpected victories produce much larger changes, allowing 
+the Elo ratings to adapt throughout the season.
 
 This probability is calculated by the ```win_probability()``` method:
 ```python
