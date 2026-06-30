@@ -20,7 +20,7 @@ class PlayoffSimulator:
         self.elo = elo_model
 
 
-    def simulate_game(self, team_a_id, team_b):
+    def simulate_game(self, team_a, team_b):
         """
         Simulate a single game.
 
@@ -35,10 +35,10 @@ class PlayoffSimulator:
             team_id of the winning team.
         """
 
-        prob = self.elo.win_probability(team_a_id, team_b)
+        prob = self.elo.win_probability(team_a, team_b)
 
         if random.random() < prob:
-            return team_a_id
+            return team_a
 
         return team_b
 
