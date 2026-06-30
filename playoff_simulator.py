@@ -3,6 +3,9 @@ import random
 class PlayoffSimulator:
     """
     Simulates the NBA playoffs using an Elo model.
+
+    Teams are referenced by their NBA team_id (int) throughout, to stay
+    consistent with the Elo model and data loader.
     """
 
     def __init__(self, elo_model):
@@ -21,10 +24,15 @@ class PlayoffSimulator:
         """
         Simulate a single game.
 
+        Parameters
+        ----------
+        team_a : int
+        team_b : int
+
         Returns
         -------
-        str
-            Winning team.
+        int
+            team_id of the winning team.
         """
 
         prob = self.elo.win_probability(team_a_id, team_b)
@@ -40,8 +48,8 @@ class PlayoffSimulator:
 
         Parameters
         ----------
-        team_a : str
-        team_b : str
+        team_a : int
+        team_b : int
 
         Returns
         -------
@@ -84,7 +92,7 @@ class PlayoffSimulator:
         Parameters
         ----------
         teams : list
-            Teams ordered by playoff seed (1-8).
+            8 team_ids ordered by playoff seed (1-8).
 
         Returns
         -------
@@ -134,10 +142,9 @@ class PlayoffSimulator:
         Parameters
         ----------
         east : list
-            Eastern Conference playoff teams ordered by seed (1-8).
-
+            8 team_ids, Eastern Conference, ordered by seed (1-8).
         west : list
-            Western Conference playoff teams ordered by seed (1-8).
+            8 team_ids, Western Conference, ordered by seed (1-8).
 
         Returns
         -------
@@ -174,7 +181,7 @@ class PlayoffSimulator:
         Returns
         -------
         dict
-            Championship probabilities.
+            Championship probabilities, keyed by team_id.
         """
 
         champions = {}

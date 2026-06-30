@@ -11,3 +11,8 @@ TEAM_ABBREV_TO_ID = {
     t["abbreviation"]: t["id"]
     for t in NBA_TEAMS
 }
+
+TEAM_ID_TO_NAME = {
+    t["id"]: t["full_name"]
+    for t in NBA_TEAMS
+}

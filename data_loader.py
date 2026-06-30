@@ -2,6 +2,11 @@ from nba_api.stats.endpoints import leaguegamelog
 import pandas as pd
 
 def load_regular_season_games(season):
+    """
+    Loads and processes NBA regular season games into a clean format
+    suitable for Elo modelling. Teams are identified by TEAM_ID (int),
+    not by name. This avoids all name-matching inconsistencies.
+    """
 
     games = leaguegamelog.LeagueGameLog(
         season=season,
@@ -29,8 +34,8 @@ def load_regular_season_games(season):
                 "GAME_ID": game_id,
                 "DATE": home["GAME_DATE"],
 
-                "HOME_TEAM": home["TEAM_NAME"],
-                "AWAY_TEAM": away["TEAM_NAME"],
+                "HOME_TEAM": home["TEAM_ID"],
+                "AWAY_TEAM": away["TEAM_ID"],
 
                 "HOME_PTS": home["PTS"],
                 "AWAY_PTS": away["PTS"],
@@ -53,8 +58,8 @@ def load_regular_season_games(season):
                 "GAME_ID": game_id,
                 "DATE": team_a["GAME_DATE"],
 
-                "HOME_TEAM": team_a["TEAM_NAME"],
-                "AWAY_TEAM": team_b["TEAM_NAME"],
+                "HOME_TEAM": team_a["TEAM_ID"],
+                "AWAY_TEAM": team_b["TEAM_ID"],
 
                 "HOME_PTS": team_a["PTS"],
                 "AWAY_PTS": team_b["PTS"],
@@ -66,7 +71,5 @@ def load_regular_season_games(season):
         else:
             print(f"Unexpected game structure: {game_id}")
             print(game[["TEAM_NAME", "MATCHUP"]])
-
-    print(f"Neutral games found: {len(neutral_games)}")
 
     return pd.DataFrame(grouped_games)

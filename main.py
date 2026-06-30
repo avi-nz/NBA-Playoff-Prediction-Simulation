@@ -1,23 +1,43 @@
+from nba_api.stats.endpoints import leaguestandings
 from data_loader import load_regular_season_games
 from elo import EloModel
+from playoff_simulator import PlayoffSimulator
+from teams import TEAM_ID_TO_NAME
 
-# Load games
-games = load_regular_season_games("2025-26")
+SEASON = "2025-26"
 
-# ensure chronological order
+# Train Elo on regular season games
+games = load_regular_season_games(SEASON)
 games = games.sort_values("DATE").reset_index(drop=True)
 
-# Initialise model
 elo = EloModel(k=20, initial_rating=1500)
-
-# Fit model (actual season simulation)
 elo.fit(games)
 
-# Get final ratings (baseline Elo)
-final_ratings = elo.get_ratings()
+print("Final Elo Ratings:")
+for team_id, rating in elo.get_rankings():
+    print(f"{TEAM_ID_TO_NAME.get(team_id, team_id):25s} {rating:.1f}")
 
-# Sort for standings-style output
-rankings = elo.get_rankings()
+# Get the playoff bracket (top 8 seeds per conference)
+standings = leaguestandings.LeagueStandings(season=SEASON).get_data_frames()[0]
 
-for team, rating in rankings:
-    print(team, rating)
+east = (
+    standings[standings["Conference"] == "East"]
+    .sort_values("PlayoffRank")
+    .head(8)["TeamID"]
+    .tolist()
+)
+
+west = (
+    standings[standings["Conference"] == "West"]
+    .sort_values("PlayoffRank")
+    .head(8)["TeamID"]
+    .tolist()
+)
+
+# Run Monte Carlo playoff simulation
+sim = PlayoffSimulator(elo)
+results = sim.simulate_many(east, west, n_simulations=10000)
+
+print("\nChampionship Odds:")
+for team_id, prob in sorted(results.items(), key=lambda x: x[1], reverse=True):
+    print(f"{TEAM_ID_TO_NAME.get(team_id, team_id):25s} {prob * 100:.1f}%")
