@@ -793,4 +793,113 @@ I assumed all NBA datasets use a consistent team identifier format.
 They do not.
 
 #### The Fix:
+The temptation at this point was to patch the symptom: build a translation dictionary that maps every 
+possible name variant ("LAL" → "Los Angeles Lakers" → "LA Lakers") to a single canonical string, and 
+sprinkle `.get()` lookups with fallbacks wherever a KeyError appeared. I actually went down this path 
+first, in a separate debugging session — adding a `clean_name()` normaliser, a `TEAM_NAME_MAP` dictionary, 
+`.get()` calls with `None` fallbacks, `dropna()` safety nets, and `assert` statements scattered across the 
+loader. It "worked" in the sense that it stopped crashing immediately, but it just moved the failure further 
+downstream — I ended up with dozens of `UNMAPPED GAME` warnings and an eventual `KeyError: nan` deep inside 
+the simulator, because partial name-matching can never be made fully exhaustive. Every new endpoint or season 
+risked introducing yet another naming variant.
+
+The actual fix was to stop matching on names at all.
+
+Both endpoints I was already using, `LeagueGameLog` and `LeagueStandings`, return a numeric `TEAM_ID` field 
+directly. This ID is stable across endpoints, seasons, and naming conventions, because it identifies the 
+franchise at the database level rather than via a display string. Once I noticed this, the name-matching 
+problem disappeared entirely because there was nothing to match as both data sources already agreed on the 
+same identifier.
+
+```python
+from nba_api.stats.static import teams
+
+NBA_TEAMS = teams.get_teams()
+
+TEAM_ID_TO_NAME = {
+    t["id"]: t["full_name"]
+    for t in NBA_TEAMS
+}
+```
+
+`teams.py` keeps this single lookup table purely for display purposes, converting team IDs back into 
+readable names when printing results. It is no longer used anywhere in the data pipeline itself.
+
+`data_loader.py` was updated so that `HOME_TEAM` and `AWAY_TEAM` (and the neutral-site equivalents) store 
+`TEAM_ID` instead of `TEAM_NAME`:
+
+```python
+grouped_games.append({
+    "GAME_ID": game_id,
+    "DATE": home["GAME_DATE"],
+
+    "HOME_TEAM": home["TEAM_ID"],
+    "AWAY_TEAM": away["TEAM_ID"],
+
+    "HOME_PTS": home["PTS"],
+    "AWAY_PTS": away["PTS"],
+
+    "SITE_TYPE": "HOME_AWAY"
+})
+```
+
+`elo.py` required no changes at all. Because the Elo model treats team identifiers as opaque dictionary 
+keys, it never inspects or parses the string, swapping strings for integers was a drop-in change. This 
+ended up being a good validation of the original design: keeping `EloModel` agnostic to what a "team" 
+actually *is* meant the identity-mismatch bug could be fixed entirely at the data layer, without touching 
+the model logic.
+
+`playoff_simulator.py` similarly needed no structural changes, only the type flowing through it changed, 
+from team name strings to team ID integers. The bracket logic, series logic, and Monte Carlo loop were 
+already identifier-agnostic by design.
+
+The only remaining piece was building the playoff bracket itself from `LeagueStandings`, which also exposes 
+`TeamID` directly:
+
+```python
+standings = leaguestandings.LeagueStandings(season=SEASON).get_data_frames()[0]
+
+east = (
+    standings[standings["Conference"] == "East"]
+    .sort_values("PlayoffRank")
+    .head(8)["TeamID"]
+    .tolist()
+)
+```
+
+With this, `main.py` could run start to finish — train Elo on `TEAM_ID`-keyed games, pull seeding from 
+standings as a list of `TEAM_ID`s, and feed both into the simulator, without a single name lookup, mapping 
+dictionary, or `.get()` fallback anywhere in the pipeline.
+
+#### Lesson learned: 
+When two datasets disagree on how to represent the same real-world entity, the fix is 
+almost never a better translation layer between them, it's finding the identifier they already agree on 
+and using that instead. The name-matching approach felt productive because it produced visible progress 
+(fewer crashes per iteration), but it was solving the wrong problem. The moment I checked whether `TeamID` 
+existed in both API responses, the "fix" became a deletion of code rather than an addition of more of it.
+
+# Model 0 (Baseline Elo) - results:
+```
+Championship Odds:
+San Antonio Spurs         28.5%
+Oklahoma City Thunder     25.0%
+Boston Celtics            15.1%
+Detroit Pistons           13.6%
+Denver Nuggets            5.9%
+Cleveland Cavaliers       3.7%
+New York Knicks           2.9%
+Los Angeles Lakers        2.2%
+Houston Rockets           1.0%
+Atlanta Hawks             0.9%
+Orlando Magic             0.3%
+Minnesota Timberwolves    0.3%
+Philadelphia 76ers        0.2%
+Toronto Raptors           0.1%
+Portland Trail Blazers    0.1%
+Phoenix Suns              0.1%
+```
+This is the project's first concrete output, and it represents Model 0 from the roadmap: baseline Elo, no 
+adjustments for home court, recent form, matchups, or injuries. Every team's win probability in every 
+simulated game comes from nothing more than its end-of-regular-season Elo rating.
+
 
