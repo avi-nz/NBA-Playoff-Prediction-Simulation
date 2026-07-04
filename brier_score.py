@@ -1,10 +1,6 @@
 from teams import TEAM_ID_TO_NAME
 
 
-# ---------------------------------------------------------------------------
-# Brier score — championship level
-# ---------------------------------------------------------------------------
-
 def championship_brier_score(predicted_probs, actual_champion):
     """
     Computes the Brier score for a single season's championship forecast.
@@ -50,59 +46,6 @@ def championship_brier_score(predicted_probs, actual_champion):
         total += (p - outcome) ** 2
 
     return total
-
-
-def multi_season_brier_score(season_results):
-    """
-    Averages championship Brier scores across multiple seasons to produce
-    a single model-level score for comparison.
-
-    This is the main number for comparing Model 0 vs Model 1 vs Model 2,
-    etc. A model that is genuinely better at forecasting championship
-    probability will have a lower average Brier score.
-
-    Parameters
-    ----------
-    season_results : list of dicts
-        Each dict must contain:
-            "predicted_probs" : dict {team_id (int): probability (float)}
-            "actual_champion" : int (TEAM_ID)
-
-        One dict per season. Build this by running simulate_many() and
-        load_playoff_games() for each historical season.
-
-    Returns
-    -------
-    float
-        Mean Brier score across all seasons.
-
-    Example
-    -------
-    season_results = [
-        {
-            "predicted_probs": {1610612760: 0.28, 1610612738: 0.21, ...},
-            "actual_champion": 1610612738
-        },
-        ...
-    ]
-    score = multi_season_brier_score(season_results)
-    print(f"Model 0 Brier: {score:.4f}")
-    """
-
-    if not season_results:
-        raise ValueError("season_results is empty.")
-
-    scores = [
-        championship_brier_score(r["predicted_probs"], r["actual_champion"])
-        for r in season_results
-    ]
-
-    return sum(scores) / len(scores)
-
-
-# ---------------------------------------------------------------------------
-# Display helpers
-# ---------------------------------------------------------------------------
 
 
 def print_brier_report(predicted_probs, actual_champion, season=None):

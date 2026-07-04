@@ -1035,3 +1035,107 @@ to win that year. But averaged across 15 seasons, it becomes a stable signal.
 This gives us a principled way to answer the core research question of the project: ***which
 features actually improve playoff forecasting accuracy?***
 
+### Brier Score Over 30 Seasons:
+```
+===========================================================
+MODEL 0 — BACKTEST SUMMARY
+===========================================================
+SEASON       CHAMPION                       PRED %   BRIER
+-----------------------------------------------------------
+1996-97      Chicago Bulls                  31.2%    0.6210
+1997-98      Chicago Bulls                  28.7%    0.6233
+1998-99      San Antonio Spurs              39.3%    0.4120
+1999-00      Los Angeles Lakers             55.6%    0.2273
+2000-01      Los Angeles Lakers             17.3%    0.7925
+2001-02      Los Angeles Lakers             11.5%    0.9288
+2002-03      San Antonio Spurs              38.7%    0.4572
+2003-04      Detroit Pistons                10.5%    0.9807
+2004-05      San Antonio Spurs               4.1%    1.0587
+2005-06      Miami Heat                      3.0%    1.1429
+2006-07      San Antonio Spurs               7.6%    1.1187
+2007-08      Boston Celtics                 46.3%    0.3256
+2008-09      Los Angeles Lakers             22.9%    0.8035
+2009-10      Los Angeles Lakers              2.9%    1.0947
+2010-11      Dallas Mavericks                6.7%    1.1018
+2011-12      Miami Heat                      6.6%    1.0770
+2012-13      Miami Heat                     55.4%    0.2531
+2013-14      San Antonio Spurs              29.3%    0.5490
+2014-15      Golden State Warriors          47.4%    0.3203
+2015-16      Cleveland Cavaliers             3.5%    1.3121
+2016-17      Golden State Warriors          51.8%    0.2698
+2017-18      Golden State Warriors           3.1%    1.2065
+2018-19      Toronto Raptors                13.3%    0.8691
+2019-20      Los Angeles Lakers             14.5%    0.9024
+2020-21      Milwaukee Bucks                 7.0%    0.9771
+2021-22      Golden State Warriors           1.8%    1.1153
+2022-23      Denver Nuggets                  7.3%    1.0013
+2023-24      Boston Celtics                 43.5%    0.3585
+2024-25      Oklahoma City Thunder          52.9%    0.2786
+2025-26      New York Knicks                 3.0%    1.1398
+-----------------------------------------------------------
+Average                                              0.7773
+```
+```
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model 0 avg Brier : 0.7773
+  vs baseline       : -0.1602
+```
+
+The average Brier score across 30 seasons is 0.7773, compared to the uniform baseline of 0.9375.
+This means Model 0 beats the naive "give every team an equal shot" benchmark by 0.1602, which confirms
+the model is doing something real. It is not just noise.
+
+#### Where the model does well
+
+The clearest pattern is that the model rewards years where a genuinely dominant team entered the playoffs.
+
+The best scores all cluster around these seasons:
+
+| Season  | Champion              | Pred % |  Brier |
+| ------- | --------------------- | -----: | -----: |
+| 1999–00 | Los Angeles Lakers    |  55.6% | 0.2273 |
+| 2012–13 | Miami Heat            |  55.4% | 0.2531 |
+| 2016–17 | Golden State Warriors |  51.8% | 0.2698 |
+| 2024–25 | Oklahoma City Thunder |  52.9% | 0.2786 |
+| 1998–99 | San Antonio Spurs     |  39.3% | 0.4120 |
+
+#### Where the model struggles
+The flip side is that the model gets hammered in upset years:
+
+| Season  | Champion              | Pred % |  Brier |
+| ------- | --------------------- | -----: | -----: |
+| 2015–16 | Cleveland Cavaliers   |   3.5% | 1.3121 |
+| 2017–18 | Golden State Warriors |   3.1% | 1.2065 |
+| 2005–06 | Miami Heat            |   3.0% | 1.1429 |
+| 2025–26 | New York Knicks       |   3.0% | 1.1398 |
+| 2006–07 | San Antonio Spurs     |   7.6% | 1.1187 |
+
+A score above 1.0 means the model would have been better off assigning zero probability to the real
+champion, that's how badly it got the probability wrong in those seasons. And some of these are
+genuinely hard to explain.
+
+The 2015-16 Cavaliers at 3.5% is the most extreme case. Cleveland came back from 3-1 down against those
+Warriors in the Finals, the biggest upset in NBA Finals history. A model that gave them 3.5%
+was not unreasonable going in, the market thought similarly. The Brier score just punishes the outcome
+regardless of whether the forecast was sensible.
+
+The 2017-18 Warriors at 3.1% is the most suspicious result as they were the most dominant team in NBA history, coming
+off and NBA championship the yera prior and the best regular season record in NBA history 2 years prior (with a record 
+of 73-9). This can be explained by the fact that this model only takes into account regular season results and during 
+this season the Warriors were known for 'not taking games seriously' as they were just that much better than the 
+competition.
+
+However, this just shows that the model is still to naive and needs further iterations, which will obviously come in 
+subsequent models.
+
+#### What this number actually means for the project
+
+The average Brier score of 0.7773 is now the benchmark that every subsequent model must beat.
+
+The questions the project is asking, does margin of victory help? does home court help? does recent
+form help?, all have a clean answer now. If Model 1 produces an average Brier score
+below 0.7773 across the same 30 seasons, it is a better model. If it doesn't, that feature doesn't
+add value.
+
+That is the entire point of building the backtest infrastructure before building the next model.

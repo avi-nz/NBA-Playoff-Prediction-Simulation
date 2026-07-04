@@ -6,7 +6,7 @@ from teams import TEAM_ID_TO_NAME
 from brier_score import print_brier_report
 
 
-SEASON = "2025-26"
+SEASON = "2017-18"
 
 # Train Elo on regular season games
 games = load_regular_season_games(SEASON)
