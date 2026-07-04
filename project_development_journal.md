@@ -1,4 +1,7 @@
 # NBA Playoff Prediction Simulator Project Development Document
+
+# Model 0
+
 ***
 
 ## Loading in the data...
