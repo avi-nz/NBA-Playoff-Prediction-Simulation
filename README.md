@@ -102,7 +102,7 @@ Others       16%
 ## Model Roadmap
 
 ### Model 0 - Baseline Elo
-🚧 In Progress 🚧
+✅ Complete
 
 Features:
 * Standard Elo ratings
@@ -110,6 +110,17 @@ Features:
   
 Purpose:
 * Establish benchmark performance
+
+Results (30 seasons, 1996-97 to 2025-26):
+* Average Brier Score: **0.7773**
+* Uniform baseline: 0.9375
+* vs baseline: **-0.1602**
+
+The model performs best in years with a dominant regular-season team (e.g. 1999-00 Lakers, 2012-13 Heat, 
+2016-17 Warriors) and struggles in heavy upset years (e.g. 2015-16 Cavaliers, 2005-06 Heat). 
+Beating the uniform baseline by 0.16 across 30 seasons confirms the Elo signal is real. 
+This score is the benchmark every subsequent model must beat.
+
 
 ### Model 1 - Margin of Victory Elo
 🚧 Planned 🚧
@@ -171,6 +182,21 @@ Question:
 The model will be evaluated on previous NBA seasons.
 
 Target seasons:
+* 1996
+* 1997
+* 1998
+* 1999
+* 2000
+* 2001
+* 2002
+* 2003
+* 2004
+* 2005
+* 2006
+* 2007
+* 2008
+* 2009
+* 2010
 * 2011
 * 2012
 * 2013
@@ -186,13 +212,14 @@ Target seasons:
 * 2023
 * 2024
 * 2025
+* 2026
+
+*(These are all the seasons from the play-by-play era)*
 
 Evaluation process:
 * Compare forecasts against actual outcomes
   * This includes...
     * Comparing the forecasted champion to the real champion
-    * Comparing results from each round
-    * Comparing Games Won/Lost from each team
 
 
 
