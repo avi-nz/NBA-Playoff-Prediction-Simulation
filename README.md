@@ -1,4 +1,6 @@
-# NBA Playoff Prediction Simulation
+# How Predictable Are the NBA Playoffs?
+#### Predicting NBA playoff outcomes using only information available before the playoffs begin.
+
 Predicting NBA playoff outcomes using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
 
 ## Content & Documentation
