@@ -1,10 +1,12 @@
 from nba_api.stats.endpoints import leaguestandings
-from data_loader import load_regular_season_games
+from data_loader import load_regular_season_games, get_champion
 from elo import EloModel
 from playoff_simulator import PlayoffSimulator
 from teams import TEAM_ID_TO_NAME
+from backtest import print_brier_report
 
-SEASON = "2025-26"
+
+SEASON = "2024-25"
 
 # Train Elo on regular season games
 games = load_regular_season_games(SEASON)
@@ -41,3 +43,7 @@ results = sim.simulate_many(east, west, n_simulations=10000)
 print("\nChampionship Odds:")
 for team_id, prob in sorted(results.items(), key=lambda x: x[1], reverse=True):
     print(f"{TEAM_ID_TO_NAME.get(team_id, team_id):25s} {prob * 100:.1f}%")
+
+# print the brier score
+champion_id = get_champion(SEASON)
+print_brier_report(results, champion_id, season=SEASON)

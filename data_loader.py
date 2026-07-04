@@ -73,3 +73,39 @@ def load_regular_season_games(season):
             print(game[["TEAM_NAME", "MATCHUP"]])
 
     return pd.DataFrame(grouped_games)
+
+
+
+def get_champion(season):
+    """
+    Returns the TEAM_ID of the NBA champion for a given season.
+
+    Loads all playoff games, finds the last game played (the deciding
+    game of the Finals), and returns the winning team's TEAM_ID.
+
+    Parameters
+    ----------
+    season : str
+        NBA season string, e.g. "2024-25".
+
+    Returns
+    -------
+    int
+        TEAM_ID of the champion.
+    """
+
+    games = leaguegamelog.LeagueGameLog(
+        season=season,
+        season_type_all_star='Playoffs',
+        player_or_team_abbreviation='T'
+    )
+
+    df = games.get_data_frames()[0]
+    df["GAME_DATE"] = pd.to_datetime(df["GAME_DATE"])
+
+    last_game_id = df.sort_values("GAME_DATE")["GAME_ID"].iloc[-1]
+
+    final_game = df[df["GAME_ID"] == last_game_id]
+    winner_row = final_game[final_game["WL"] == "W"].iloc[0]
+
+    return int(winner_row["TEAM_ID"])
