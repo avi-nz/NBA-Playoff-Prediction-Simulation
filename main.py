@@ -3,10 +3,10 @@ from data_loader import load_regular_season_games, get_champion
 from elo import EloModel
 from playoff_simulator import PlayoffSimulator
 from teams import TEAM_ID_TO_NAME
-from backtest import print_brier_report
+from brier_score import print_brier_report
 
 
-SEASON = "2024-25"
+SEASON = "2025-26"
 
 # Train Elo on regular season games
 games = load_regular_season_games(SEASON)

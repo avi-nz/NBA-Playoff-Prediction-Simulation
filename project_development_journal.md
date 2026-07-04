@@ -881,25 +881,157 @@ existed in both API responses, the "fix" became a deletion of code rather than a
 # Model 0 (Baseline Elo) - results:
 ```
 Championship Odds:
-San Antonio Spurs         28.5%
-Oklahoma City Thunder     25.0%
-Boston Celtics            15.1%
-Detroit Pistons           13.6%
-Denver Nuggets            5.9%
-Cleveland Cavaliers       3.7%
-New York Knicks           2.9%
-Los Angeles Lakers        2.2%
-Houston Rockets           1.0%
+San Antonio Spurs         28.7%
+Oklahoma City Thunder     25.5%
+Boston Celtics            14.7%
+Detroit Pistons           13.2%
+Denver Nuggets            5.8%
+Cleveland Cavaliers       3.6%
+New York Knicks           3.2%
+Los Angeles Lakers        2.4%
+Houston Rockets           1.1%
 Atlanta Hawks             0.9%
-Orlando Magic             0.3%
 Minnesota Timberwolves    0.3%
 Philadelphia 76ers        0.2%
+Orlando Magic             0.2%
 Toronto Raptors           0.1%
 Portland Trail Blazers    0.1%
-Phoenix Suns              0.1%
+Phoenix Suns              0.0%
 ```
 This is the project's first concrete output, and it represents Model 0 from the roadmap: baseline Elo, no 
 adjustments for home court, recent form, matchups, or injuries. Every team's win probability in every 
 simulated game comes from nothing more than its end-of-regular-season Elo rating.
 
+
+## Comparing to actual NBA results:
+Now that we have these probabilities, we can compare them to the real result of the NBA.
+
+My first thought was to do a **backtest**. However, after implementing this I quickly realised there was
+a fundamental conceptual problem with how I was thinking about it.
+
+#### The Problem with Comparing Probabilities to a Single Outcome:
+
+Because we are running Monte Carlo simulations, what we get back is a probability distribution, not a
+prediction. We are not saying "this team will win", we are saying "this team wins X% of the time across
+many simulated universes".
+
+The problem is that real life only has one universe. The playoffs happen once. OKC either wins or they don't.
+
+So if our model gives OKC a 30% championship probability and they win, does that mean the model was right?
+Wrong? We have no way of knowing from a single season. A 30% event happening once tells us nothing, it was
+supposed to happen 30% of the time anyway.
+
+The same problem applies at the series level. If our model says Team A has a 65% chance of winning a series
+and Team B wins, that doesn't mean the model was wrong. It means the 35% outcome happened.
+
+This means the naive approach of "did the model pick the right champion?" is essentially useless as an
+evaluation metric. It punishes the model for randomness, not for being bad.
+
+### The Solution: Brier Score:
+After thinking this through, the right tool for evaluating probabilistic forecasts is the **Brier Score**.
+
+#### What is a Brier Score:
+The Brier score was introduced by American meteorologist Glenn W. Brier.
+
+He published the measure in 1950 in the Monthly 
+Weather Review to measure the accuracy and reliability of probability-based weather forecasts
+
+A Brier Score is a metric used to measure the accuracy and calibration of probabilistic predictions 
+for binary or categorical events (e.g., forecasting a 30% chance of rain). 
+
+It calculates the mean squared difference between the predicted probabilities and the actual outcomes
+
+Therefore, in the case for our project:
+
+instead of asking "did the right team win?", it asks "how wrong were the probabilities, on average?"
+
+For each team, we have:
+* `p` = the model's predicted championship probability
+* `outcome` = 1 if they actually won, 0 if they didn't
+
+The Brier Score is:
+
+$$
+\text{Brier Score} = \sum_{i=1}^{K} (p_i - o_i)^2
+$$
+
+* 0 (Perfect Accuracy): The forecast perfectly predicted the outcomes.
+* 0.25 (Random Guessing): A 50/50 probability assigned to every event.
+* 1 (Total Inaccuracy): The forecast predicted a 100% chance for an event that did not happen, 
+or a 0% chance for an event that did.
+
+In short, a *lower* Brier score indicates a more accurate and reliable forecast.
+
+A model that gave 30% to the real champion gets penalised less than a model that gave 5%.
+A model that gave 95% to the wrong team gets hammered.
+
+Crucially, this metric is meaningful across multiple seasons. By running the model on 15 historical
+seasons and averaging the Brier scores, we get a single number that tells us how good the model actually
+is, and more importantly, we can compare this number across Model 0, Model 1, Model 2, etc. to see
+whether each new feature genuinely improves the forecast.
+
+For reference, a naive model that assigns every team an equal 1/16 chance scores 0.9375.
+If our model can't beat that, something is seriously wrong.
+
+Naive model:
+
+$$
+\text{Naive Brier Score} = \left(\frac{1}{16}-1\right)^2 + 15\left(\frac{1}{16}-0\right)^2 = 0.9375
+$$
+
+
+### Implementation:
+I created a `brier_score.py` file to house the scoring logic, and a `get_champion()` function in
+`data_loader.py` to retrieve the actual champion for any historical season.
+
+#### Getting the actual Champion:
+```python
+def get_champion(season):
+    games = leaguegamelog.LeagueGameLog(
+        season=season,
+        season_type_all_star='Playoffs',
+        player_or_team_abbreviation='T'
+    )
+
+    df = games.get_data_frames()[0]
+    df["GAME_DATE"] = pd.to_datetime(df["GAME_DATE"])
+
+    last_game_id = df.sort_values("GAME_DATE")["GAME_ID"].iloc[-1]
+
+    final_game = df[df["GAME_ID"] == last_game_id]
+    winner_row = final_game[final_game["WL"] == "W"].iloc[0]
+
+    return int(winner_row["TEAM_ID"])
+```
+
+The logic here is simple: load all playoff games, find the last game played (which is always Game 4, 5, 6
+or 7 of the Finals), and return the `TEAM_ID` of whoever had a W in that game. That team is the champion.
+
+I initially tried a more complex approach, reconstructing the entire bracket round by round using the
+round number embedded in the `GAME_ID` string. This quickly became a debugging nightmare because pandas
+was storing `GAME_ID` as an integer, silently dropping the leading zeros, which caused the string indexing
+to slice the wrong characters and return no Finals series at all. The bracket approach also wasn't necessary
+at this stage since we only need the champion for the Brier score. The simple approach above, last game,
+check WL, works reliably and is much easier to reason about.
+
+#### Computing the Brier Score:
+```python
+def championship_brier_score(predicted_probs, actual_champion):
+    total = 0.0
+
+    for team_id, p in predicted_probs.items():
+        outcome = 1 if int(team_id) == int(actual_champion) else 0
+        total  += (p - outcome) ** 2
+
+    return total
+```
+
+#### What the Brier Score Actually Tells Us
+
+The real value of this metric only becomes apparent when we run it across multiple seasons. A single
+season's Brier score tells us very little, it depends too much on whether the favoured team happened
+to win that year. But averaged across 15 seasons, it becomes a stable signal.
+
+This gives us a principled way to answer the core research question of the project: ***which
+features actually improve playoff forecasting accuracy?***
 
