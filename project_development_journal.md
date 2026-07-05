@@ -2,8 +2,6 @@
 
 # Model 0
 
-***
-
 ## Loading in the data...
 
 ### Attempt 1:
