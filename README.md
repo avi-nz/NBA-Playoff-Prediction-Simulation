@@ -16,6 +16,7 @@ This project is being documented publicly throughout development.
 #### 📱 Development shorts/reels
 
 #### ✍️ Technical Substack articles
+1. [What Can Chess Teach Us About Predicting the NBA Playoffs?](https://avishainarsey.substack.com/p/what-can-chess-teach-us-about-predicting)
 
 ## Overview
 This project explores how accurately NBA playoff outcomes can be predicted using only information available before the playoffs begin.
