@@ -1,7 +1,6 @@
 # How Predictable Are the NBA Playoffs?
 #### Predicting NBA playoff outcomes using only information available before the playoffs begin.
-
-Predicting NBA playoff outcomes using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
+Using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
 
 ## Content & Documentation
 
@@ -107,6 +106,9 @@ Others       16%
 ### Model 0 - Baseline Elo
 ✅ Complete
 
+#### Substack Article:
+* [What Can Chess Teach Us About Predicting the NBA Playoffs?](https://avishainarsey.substack.com/p/what-can-chess-teach-us-about-predicting)
+
 Features:
 * Standard Elo ratings
 * No additional adjustments
@@ -124,6 +126,7 @@ The model performs best in years with a dominant regular-season team (e.g. 1999-
 Beating the uniform baseline by 0.16 across 30 seasons confirms the Elo signal is real. 
 This score is the benchmark every subsequent model must beat.
 
+[Read the full results in the Project Development Journal](project_development_journal.md/#model-0-baseline-elo---results)
 
 ### Model 1 - Margin of Victory Elo
 🚧 Planned 🚧
@@ -162,7 +165,7 @@ Question:
 * Are teams entering the playoffs stronger or weaker than their season-long rating?
 
 ### Model 5 - Matchup Effects
-🚧 Planned
+🚧 Planned 🚧
 
 Additional feature:
 * Head-to-head regular-season performance
