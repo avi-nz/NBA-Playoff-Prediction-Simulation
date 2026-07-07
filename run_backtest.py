@@ -2,19 +2,32 @@ import json
 import time
 from nba_api.stats.endpoints import leaguestandings
 from data_loader import load_regular_season_games, get_champion
-from elo import EloModel
+from elo import EloModel, EloModelMoV
 from playoff_simulator import PlayoffSimulator
 from brier_score import championship_brier_score
 from teams import TEAM_ID_TO_NAME
+from seasons import VALID_SEASONS
 
-RESULTS_FILE = "results/backtest_model0.json"
 
-# All seasons to backtest.
-# Format: "YYYY-YY" e.g. "1996-97", "2024-25"
-SEASONS = [
-    f"{year}-{str(year + 1)[-2:]}"
-    for year in range(1996, 2026)  # 1996-97 through 2025-26
-]
+# Model selection
+MODELS = {
+    "0": ("Model 0 — Baseline Elo", EloModel, "results/backtest_model0.json"),
+    "1": ("Model 1 — Margin of Victory Elo", EloModelMoV, "results/backtest_model1.json"),
+}
+
+print("\nAvailable models:")
+for key, (name, _, _) in MODELS.items():
+    print(f"  [{key}] {name}")
+
+choice = input("\nSelect a model: ").strip()
+
+while choice not in MODELS:
+    print(f"  Invalid choice '{choice}'. Please enter one of: {', '.join(MODELS.keys())}")
+    choice = input("  Select a model: ").strip()
+
+model_name, EloModelClass, RESULTS_FILE = MODELS[choice]
+print(f"\nRunning backtest for {model_name}...\n")
+
 
 # Seconds to wait between seasons to avoid NBA API rate limiting.
 SLEEP_BETWEEN_SEASONS = 5
@@ -65,7 +78,7 @@ def run_season(season):
 
     # --- Elo model ---
     print("  Training Elo model...")
-    elo = EloModel(k=20, initial_rating=1500)
+    elo = EloModelClass(k=20, initial_rating=1500)
     elo.fit(games)
 
     # --- Playoff seeds ---
@@ -128,7 +141,7 @@ if __name__ == "__main__":
     all_results = load_existing_results()
     completed_seasons = {r["season"] for r in all_results}
 
-    for season in SEASONS:
+    for season in VALID_SEASONS:
 
         if season in completed_seasons:
             print(f"  Skipping {season} (already completed)")

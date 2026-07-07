@@ -1,18 +1,48 @@
 from nba_api.stats.endpoints import leaguestandings
 from data_loader import load_regular_season_games, get_champion
-from elo import EloModel
+from elo import EloModel, EloModelMoV
 from playoff_simulator import PlayoffSimulator
 from teams import TEAM_ID_TO_NAME
 from brier_score import print_brier_report
+from seasons import VALID_SEASONS
 
 
-SEASON = "2017-18"
+# Season selection
+print(f"Valid seasons: {VALID_SEASONS[0]} to {VALID_SEASONS[-1]}")
+
+season = input("\nEnter a season (e.g. 2024-25): ").strip()
+
+while season not in VALID_SEASONS:
+    print(f"  Invalid season '{season}'. Please enter a season between {VALID_SEASONS[0]} and {VALID_SEASONS[-1]}.")
+    season = input("  Enter a season: ").strip()
+
+SEASON = season
+
+# Model selection
+MODELS = {
+    "0": ("Model 0 — Baseline Elo", EloModel),
+    "1": ("Model 1 — Margin of Victory Elo", EloModelMoV),
+}
+
+print("\nAvailable models:")
+for key, (name, _) in MODELS.items():
+    print(f"  [{key}] {name}")
+
+choice = input("\nSelect a model: ").strip()
+
+while choice not in MODELS:
+    print(f"  Invalid choice '{choice}'. Please enter one of: {', '.join(MODELS.keys())}")
+    choice = input("  Select a model: ").strip()
+
+model_name, EloModelClass = MODELS[choice]
+print(f"\nRunning {model_name}...\n")
+
 
 # Train Elo on regular season games
 games = load_regular_season_games(SEASON)
 games = games.sort_values("DATE").reset_index(drop=True)
 
-elo = EloModel(k=20, initial_rating=1500)
+elo = EloModelClass(k=20, initial_rating=1500)
 elo.fit(games)
 
 print("Final Elo Ratings:")

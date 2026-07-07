@@ -1,4 +1,5 @@
 import pandas as pd
+import math
 
 """
 elo.py
@@ -72,10 +73,10 @@ class EloModel:
 
         Parameters
         ----------
-        team_a : str
-            Name of the first team.
-        team_b : str
-            Name of the second team.
+        team_a : int
+            TEAM_ID of the first team.
+        team_b : int
+            TEAM_ID of the second team.
 
         Returns
         -------
@@ -98,12 +99,12 @@ class EloModel:
 
         Parameters
         ----------
-        team_a : str
-            First team.
-        team_b : str
-            Second team.
-        winner : str
-            Name of the winning team.
+        team_a : int
+            TEAM_ID of the first team.
+        team_b : int
+            TEAM_ID of the second team.
+        winner : int
+            TEAM_ID of the winning team.
         """
 
         prob_a = self.win_probability(team_a, team_b)
@@ -206,3 +207,98 @@ class EloModel:
         """
 
         return pd.DataFrame(self.history)
+
+class EloModelMoV(EloModel):
+    """
+    Model 1: Margin of Victory Elo.
+
+    Extends the baseline EloModel by incorporating point differential
+    into rating updates. A blowout win updates ratings more than a
+    one-point win, but the relationship is logarithmic rather than
+    linear — a 30-point win does not produce 30x the update of a
+    1-point win.
+
+    Everything else — initialisation, win probability calculation,
+    fitting, history tracking — is inherited unchanged from EloModel.
+
+    The multiplier used is:
+
+        mov_multiplier = log(|point_diff| + 1)
+
+    This is applied as:
+
+        rating_change = K × mov_multiplier × (actual − expected)
+
+    The intuition is that a team which wins comfortably has demonstrated
+    more convincingly that they are the stronger side. A narrow win could
+    easily have gone the other way; a 25-point win is a clearer signal.
+
+    Using log(diff + 1) rather than the raw differential prevents a
+    single extreme blowout from producing an unrealistically large
+    rating swing, while still rewarding dominant performances.
+    """
+
+    def update_ratings(self, team_a, team_b, winner, point_diff=0):
+        """
+        Update Elo ratings using a margin-of-victory multiplier.
+
+        Parameters
+        ----------
+        team_a : int
+            TEAM_ID of the first team.
+        team_b : int
+            TEAM_ID of the second team.
+        winner : int
+            TEAM_ID of the winning team.
+        point_diff : int
+            Absolute point differential of the game (always positive).
+        """
+
+        prob_a   = self.win_probability(team_a, team_b)
+        actual_a = 1 if winner == team_a else 0
+
+        mov_multiplier = math.log(point_diff + 1)
+
+        self.ratings[team_a] += self.k * mov_multiplier * (actual_a - prob_a)
+        self.ratings[team_b] += self.k * mov_multiplier * ((1 - actual_a) - (1 - prob_a))
+
+
+    def fit(self, games):
+        """
+        Fit the MoV Elo model to a season of games.
+
+        Identical to EloModel.fit() except point_diff is extracted from
+        each game row and passed to the overridden update_ratings().
+
+        Parameters
+        ----------
+        games : pandas.DataFrame
+            Chronologically ordered regular season games. Must contain
+            HOME_PTS and AWAY_PTS columns.
+        """
+
+        if not self.ratings:
+            self.initialize_teams(games)
+
+        for _, row in games.iterrows():
+            home = row["HOME_TEAM"]
+            away = row["AWAY_TEAM"]
+
+            winner     = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+            point_diff = abs(int(row["HOME_PTS"]) - int(row["AWAY_PTS"]))
+
+            self.update_ratings(home, away, winner, point_diff)
+
+            self.history.append({
+                "DATE":    row["DATE"],
+                "GAME_ID": row["GAME_ID"],
+                "TEAM":    home,
+                "ELO":     self.ratings[home]
+            })
+
+            self.history.append({
+                "DATE":    row["DATE"],
+                "GAME_ID": row["GAME_ID"],
+                "TEAM":    away,
+                "ELO":     self.ratings[away]
+            })

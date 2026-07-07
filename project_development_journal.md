@@ -1140,3 +1140,11 @@ below 0.7773 across the same 30 seasons, it is a better model. If it doesn't, th
 add value.
 
 That is the entire point of building the backtest infrastructure before building the next model.
+
+
+```
+Seasons completed : 30
+Uniform baseline  : 0.9375
+Model 0 avg Brier : 0.8456
+vs baseline       : -0.0919
+```
