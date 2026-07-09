@@ -1411,3 +1411,6 @@ This is actually a useful finding. It suggests that regular season game-level Br
 reliable proxy for championship Brier score when comparing Elo variants. For this project, the
 metric that matters is championship Brier, and that is what future models should optimise against.
 
+Model 1 is not an improvement on Model 0 by the metric that matters. ***On to Model 2***.
+
+# Model 2 - Bayesian Team Strength

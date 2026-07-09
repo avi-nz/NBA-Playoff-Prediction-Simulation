@@ -132,13 +132,34 @@ This score is the benchmark every subsequent model must beat.
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-0-baseline-elo---results)
 
 ### Model 1 - Margin of Victory Elo
-🚧 Planned 🚧
+❌ Complete — No Improvement
 
 Additional feature:
-* Incorporates point differential into Elo updates
+* Incorporates point differential into Elo updates via a parameterised multiplier:
+`(point_diff + a)^b / (c + d × elo_diff)`
 
 Question:
 * Does margin of victory improve playoff forecasting accuracy?
+
+Answer: **No** — at least not by the metric that matters (which is champion prediction accuracy).
+
+Results (30 seasons, 1996-97 to 2025-26):
+
+* Model 0 avg Brier : **0.7773**
+* Model 1 (log formula) : 0.8456 ❌
+* Model 1 (538 formula) : 0.7853 ❌
+* Model 1 (tuned params): 0.7867 ❌
+
+Three different implementations were tested — a simple log formula, FiveThirtyEight's
+empirical formula, and a version with parameters tuned to our own data via
+`scipy.optimize`. All three produced worse championship Brier scores than Model 0.
+
+The game-level Brier score did improve with the 538 and tuned formulas, suggesting
+MoV adds signal for predicting individual regular season games. But this did not
+translate to better playoff predictions. Regular season blowout margins appear to be
+a poor proxy for playoff performance.
+
+[Read the full results in the Project Development Journal](project_development_journal.md/#model-1---margin-of-victory)
 
 ### Model 2 - Bayesian Team Strength
 🚧 Planned 🚧
