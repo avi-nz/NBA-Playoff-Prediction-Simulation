@@ -1,6 +1,3 @@
-import pandas as pd
-import math
-
 """
 elo.py
 
@@ -10,6 +7,10 @@ The model processes regular season games chronologically, updates team
 ratings after every match, and stores a complete history of Elo ratings
 for later analysis and playoff simulation.
 """
+
+import pandas as pd
+import math
+
 
 class EloModel:
     """
@@ -208,39 +209,52 @@ class EloModel:
 
         return pd.DataFrame(self.history)
 
+
 class EloModelMoV(EloModel):
     """
-    Model 1: Margin of Victory Elo.
+    Model 1: Margin of Victory Elo with tunable parameters.
 
     Extends the baseline EloModel by incorporating point differential
-    into rating updates. A blowout win updates ratings more than a
-    one-point win, but the relationship is logarithmic rather than
-    linear — a 30-point win does not produce 30x the update of a
-    1-point win.
+    into rating updates via a parameterised MOV multiplier:
 
-    Everything else — initialisation, win probability calculation,
-    fitting, history tracking — is inherited unchanged from EloModel.
+        mov_multiplier = (point_diff + a)^b / (c + d * elo_diff)
 
-    The multiplier used is:
+    where elo_diff is the winner's pregame Elo minus the loser's.
 
-        mov_multiplier = log(|point_diff| + 1)
+    The four parameters (a, b, c, d) default to FiveThirtyEight's
+    empirically-fitted values but can be overridden — for example, by
+    tune_mov.py which searches for the values that minimise game-level
+    Brier score on historical NBA seasons.
 
-    This is applied as:
-
-        rating_change = K × mov_multiplier × (actual − expected)
-
-    The intuition is that a team which wins comfortably has demonstrated
-    more convincingly that they are the stronger side. A narrow win could
-    easily have gone the other way; a 25-point win is a clearer signal.
-
-    Using log(diff + 1) rather than the raw differential prevents a
-    single extreme blowout from producing an unrealistically large
-    rating swing, while still rewarding dominant performances.
+    Parameters
+    ----------
+    k : int
+        K-factor. Controls overall rating sensitivity.
+    initial_rating : int
+        Starting Elo rating for every team.
+    a : float
+        Shift applied to the margin before exponentiation. Prevents
+        very close games from producing near-zero multipliers.
+    b : float
+        Exponent controlling the shape of diminishing returns.
+    c : float
+        Base denominator value. Controls the overall scale of the
+        expectation correction.
+    d : float
+        Scales how much the pregame Elo difference reduces or
+        increases the multiplier for favourites and underdogs.
     """
+
+    def __init__(self, k=20, initial_rating=1500, a=0.0000, b=0.6967, c=4.1340, d=0.0006):
+        super().__init__(k, initial_rating)
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
 
     def update_ratings(self, team_a, team_b, winner, point_diff=0):
         """
-        Update Elo ratings using a margin-of-victory multiplier.
+        Update Elo ratings using the parameterised MOV multiplier.
 
         Parameters
         ----------
@@ -254,10 +268,13 @@ class EloModelMoV(EloModel):
             Absolute point differential of the game (always positive).
         """
 
-        prob_a   = self.win_probability(team_a, team_b)
+        prob_a = self.win_probability(team_a, team_b)
         actual_a = 1 if winner == team_a else 0
 
-        mov_multiplier = math.log(point_diff + 1)
+        loser = team_b if winner == team_a else team_a
+        elo_diff = self.ratings[winner] - self.ratings[loser]
+
+        mov_multiplier = (point_diff + self.a) ** self.b / (self.c + self.d * elo_diff)
 
         self.ratings[team_a] += self.k * mov_multiplier * (actual_a - prob_a)
         self.ratings[team_b] += self.k * mov_multiplier * ((1 - actual_a) - (1 - prob_a))
@@ -267,14 +284,13 @@ class EloModelMoV(EloModel):
         """
         Fit the MoV Elo model to a season of games.
 
-        Identical to EloModel.fit() except point_diff is extracted from
-        each game row and passed to the overridden update_ratings().
+        Identical to EloModel.fit() except point_diff is extracted and
+        passed to the overridden update_ratings().
 
         Parameters
         ----------
         games : pandas.DataFrame
-            Chronologically ordered regular season games. Must contain
-            HOME_PTS and AWAY_PTS columns.
+            Chronologically ordered regular season games.
         """
 
         if not self.ratings:
@@ -284,21 +300,21 @@ class EloModelMoV(EloModel):
             home = row["HOME_TEAM"]
             away = row["AWAY_TEAM"]
 
-            winner     = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+            winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
             point_diff = abs(int(row["HOME_PTS"]) - int(row["AWAY_PTS"]))
 
             self.update_ratings(home, away, winner, point_diff)
 
             self.history.append({
-                "DATE":    row["DATE"],
+                "DATE": row["DATE"],
                 "GAME_ID": row["GAME_ID"],
-                "TEAM":    home,
-                "ELO":     self.ratings[home]
+                "TEAM": home,
+                "ELO": self.ratings[home]
             })
 
             self.history.append({
-                "DATE":    row["DATE"],
+                "DATE": row["DATE"],
                 "GAME_ID": row["GAME_ID"],
-                "TEAM":    away,
-                "ELO":     self.ratings[away]
+                "TEAM": away,
+                "ELO": self.ratings[away]
             })

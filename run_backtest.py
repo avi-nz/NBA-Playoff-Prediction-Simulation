@@ -190,5 +190,5 @@ if __name__ == "__main__":
         print(f"  {'Average':<12} {' ':<28} {' ':>7}  {avg_brier:>8.4f}")
         print(f"\n  Seasons completed : {n}")
         print(f"  Uniform baseline  : {baseline:.4f}")
-        print(f"  Model 0 avg Brier : {avg_brier:.4f}")
+        print(f"  Model avg Brier : {avg_brier:.4f}")
         print(f"  vs baseline       : {avg_brier - baseline:+.4f}")

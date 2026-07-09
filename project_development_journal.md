@@ -1,6 +1,6 @@
 # NBA Playoff Prediction Simulator Project Development Document
 
-# Model 0
+# Model 0 - Baseline
 
 ## Loading in the data...
 
@@ -1141,10 +1141,273 @@ add value.
 
 That is the entire point of building the backtest infrastructure before building the next model.
 
+# Model 1 - Margin of Victory
+When making Model 1 I didn't want to overwrite the baseline model (Model 0) in case I ever need it again.
+So instead I created a new class which inherited from the baseline model:
+```python
+class EloModelMoV(EloModel):
+```
+This means `EloModelMoV` gets everything from `EloModel` for free, the initialisation,
+`win_probability()`, `get_rankings()`, `get_history()`, and I only override the parts that
+actually change.
 
+### The Core Question
+
+Does incorporating margin of victory into Elo updates improve playoff prediction accuracy?
+
+
+The only changes made to this class were the `def update_ratings()` function and also the `def fit()` function.
+```python
+def update_ratings(self, team_a, team_b, winner, point_diff=0):
+    prob_a = self.win_probability(team_a, team_b)
+    actual_a = 1 if winner == team_a else 0
+
+    loser = team_b if winner == team_a else team_a
+    elo_diff = self.ratings[winner] - self.ratings[loser]
+
+    mov_multiplier = (point_diff + self.a) ** self.b / (self.c + self.d * elo_diff)
+
+    self.ratings[team_a] += self.k * mov_multiplier * (actual_a - prob_a)
+    self.ratings[team_b] += self.k * mov_multiplier * ((1 - actual_a) - (1 - prob_a))
+```
+
+```python
+def fit(self, games):
+    if not self.ratings:
+        self.initialize_teams(games)
+
+    for _, row in games.iterrows():
+        home = row["HOME_TEAM"]
+        away = row["AWAY_TEAM"]
+
+        winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+        point_diff = abs(int(row["HOME_PTS"]) - int(row["AWAY_PTS"]))
+
+        self.update_ratings(home, away, winner, point_diff)
+
+        self.history.append({
+            "DATE": row["DATE"],
+            "GAME_ID": row["GAME_ID"],
+            "TEAM": home,
+            "ELO": self.ratings[home]
+        })
+
+        self.history.append({
+            "DATE": row["DATE"],
+            "GAME_ID": row["GAME_ID"],
+            "TEAM": away,
+            "ELO": self.ratings[away]
+        })
+```
+As you can see changes where needed to these functions in order to add the margin of victory aspect of this model.
+
+### Attempt 1: Simple Log Formula
+
+#### Diminishing returns on large margins
+
+The intuition was simple — winning by more should update ratings more, but with diminishing returns. A log function 
+captures this naturally:
+```python
+mov_multiplier = math.log(point_diff + 1)
+```
+A 1-point win gives `log(2) ≈ 0.69`, a 20-point win gives `log(21) ≈ 3.04`.
+More margin = bigger update, but the effect flattens out as margins get large.
+
+These are the results after backtesting across 30 seasons:
 ```
 Seasons completed : 30
 Uniform baseline  : 0.9375
 Model 0 avg Brier : 0.8456
 vs baseline       : -0.0919
 ```
+As you can see these results are WORSE than the baseline model. 
+This was NOT expected. 
+
+Rather than taking this at face value and discarding the margin of victory feature right away, I wanted to understand 
+*why* it made things worse. After looking into how this is properly implemented in the literature, the reason became 
+clear.
+
+`log(point_diff + 1)` gives the same multiplier regardless of whether the winning team was a
+heavy favourite or a heavy underdog. A 300-point Elo favourite winning by 20 and a 300-point underdog
+winning by 20 both get `log(21) ≈ 3.04`.
+
+But these are not equally informative results. A dominant team winning by 20 is expected. An underdog
+winning by 20 is a massive signal. The naive formula cannot tell them apart.
+
+The consequence: strong teams play against weaker opposition and naturally win by bigger margins. Over
+82 games, this inflates elite teams' Elo ratings beyond what is actually warranted. Those inflated
+ratings then feed into the playoff simulator and distort the championship probabilities.
+
+### Attempt 2: FiveThirtyEight's Formula
+After researching how professionals implement margin of victory in Elo, I found that FiveThirtyEight's
+NBA Elo model uses a more sophisticated multiplier:
+
+$$
+\text{MOV Multiplier} = \frac{(\text{MOV} + 3)^{0.8}}{7.5 + 0.006 \times \text{EloDiff}}
+$$
+
+where $EloDiff$ is the winner's Elo minus the loser's Elo before the game.
+
+The key is the denominator. When a heavy favourite wins big, their EloDiff is large and positive,
+making the denominator larger and the update smaller. When a big underdog wins big, their EloDiff is
+negative, making the denominator smaller and the update larger.
+
+This correction stops strong teams from inflating their ratings through expected blowouts — which is
+exactly what killed my first attempt.
+
+Importantly, these constants (3, 0.8, 7.5, 0.006) weren't derived from theory. FiveThirtyEight fitted
+them to historical NBA data by minimising prediction error.
+
+### Attempt 3: Fitting Our Own Constants
+Rather than just copying FiveThirtyEight's numbers, I parameterised the formula:
+
+$$
+\text{MOV Multiplier} = \frac{(\text{MOV} + a)^{b}}{c + d \times \text{EloDiff}}
+$$
+
+and used `scipy.optimize.minimize` (Nelder-Mead) to find the values of `(a, b, c, d)` that minimise
+the average per-game Brier score across 30 seasons of historical data.
+
+The optimiser was given FiveThirtyEight's values as a starting point and allowed to search from there.
+
+```
+Computing Model 0 baseline game Brier score...
+  Model 0 game Brier : 0.222491
+
+Starting optimisation (Nelder-Mead)...
+  Initial params  : a=3.0, b=0.8, c=7.5, d=0.006
+  Initial score   : 0.220405
+
+Optimization terminated successfully.
+         Current function value: 0.219889
+         Iterations: 268
+         Function evaluations: 461
+
+==============================================
+  TUNING RESULTS
+==============================================
+  Parameter       538 default           Tuned
+  ------------------------------------------
+  a                    3.0000          0.0000
+  b                    0.8000          0.7035
+  c                    7.5000          4.2962
+  d                    0.0060          0.0006
+  ------------------------------------------
+  Game Brier         0.220405        0.219889
+  Model 0            0.222491
+
+  Improvement over 538 defaults : +0.000517
+  Improvement over Model 0      : +0.002602
+```
+"Optimization terminated successfully" means the optimiser converged, it found a local minimum and
+decided it couldn't do meaningfully better.
+
+The tuned parameters are quite different from 538's. Most notably:
+* `a = 0` — The optimizer drove this all the way to zero, meaning the +3 offset that 538 uses
+to keep close-game multipliers from being near-zero wasn't useful on our data.
+
+* d = 0.0006 — ten times smaller than 538's 0.006, meaning the expectation correction is being
+dialled back significantly. This might reflect that our Elo differences are on a different scale.
+
+At the game level, the tuned formula improves over both 538's defaults and Model 0. But the game-level
+Brier score is not the same as the championship Brier score, so we need to validate this properly.
+
+### Attempt 4: Simplifying
+The fact that in our MoV model, our constants...
+```
+a = 0
+d ≈ 0
+```
+makes me wonder whether your optimizer is discovering that most of the predictive value comes simply from using a concave function of MOV.
+
+In other words, something as simple as
+```python
+mov_multiplier = mov ** 0.7
+```
+This might perform just as well as our four-parameter model.
+
+### Validation: Are These Parameters Actually Better?
+The final results:
+```
+Variant                Train Brier    Test Brier
+------------------------------------------------
+Model 0 (no MoV)       0.222328       0.223272
+log(mov + 1)           0.222050       0.223239
+mov ** 0.7             0.235950       0.239911
+538 formula            0.220367       0.220588
+Tuned 4-param          0.219817       0.220245
+```
+The most striking result here is `mov ** 0.7` is worse than Model 0 on both sets. This is the
+same shape as the 538 numerator but without the denominator correction. This single result confirms
+the pattern: a concave function of margin without the expectation correction actively harms the model.
+The denominator is doing most of the work, not the exponent.
+
+
+
+The 538 formula and the tuned formula both improve on Model 0 and hold up on the test seasons, which
+means the improvement is genuine and not overfitting.
+
+Rolling-origin cross-validation (where for each season, parameters are fit on all prior seasons and
+evaluated on that one unseen season) confirmed the same picture:
+```
+Rolling average:
+  Model 0  : 0.223679
+  538      : 0.221554  (-0.002125 vs Model 0)
+  Tuned    : 0.221235  (-0.002444 vs Model 0)
+```
+Tuned beats 538's defaults on 16 out of 24 held-out seasons.
+
+Therefore, with that out of the way, I can plug in my tuned parameters into the EloModelMoV and run a backtest on the 
+past 30 seasons
+```
+    elo = EloModelMoV(k=20, initial_rating=1500,
+                      a=0.0000, b=0.6967,
+                      c=4.1340, d=0.0006)
+```
+
+### Championship Backtest Results:
+With the validation done, I ran the full 30-season championship Brier score backtest with both the
+tuned parameters.
+```
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier : 0.7875
+  vs baseline       : -0.1500
+```
+Still worse than model 0
+
+This result is, once again, unexpected.
+
+I am now going to try 538's parameters and see if that has a better result:
+```
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier : 0.7853
+  vs baseline       : -0.1522
+```
+Both are still worse than Model 0 (0.7773), even though they were better at the game level.
+
+### Why Does This Happen?
+This is the most interesting result of the whole Model 1 investigation, and it is worth thinking
+through carefully.
+
+At the game level, MoV improves prediction accuracy. The formula produces better calibrated win
+probabilities for individual regular season games.
+
+At the championship level, it makes things worse.
+
+The most likely explanation is that the MoV adjustment changes the shape of the final Elo
+distribution in a way that hurts playoff prediction even though it helps game prediction. Specifically:
+* Margin of victory in the regular season is partly a function of strength, but also of style, pace,
+and opponent quality. Teams that run up scores against weak opponents get rewarded by MoV Elo even
+when that isn't really informative about playoff performance.
+* The playoffs are a completely different context — slower, more defensive, tighter games. A team's
+ability to blow out weak regular season opponents may not translate to playoff success.
+
+In short: what makes you better at predicting individual regular season games is not the same as
+what makes you better at predicting who wins a championship series.
+
+This is actually a useful finding. It suggests that regular season game-level Brier score is not a
+reliable proxy for championship Brier score when comparing Elo variants. For this project, the
+metric that matters is championship Brier, and that is what future models should optimise against.
+
