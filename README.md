@@ -110,7 +110,7 @@ Others       16%
 ✅ Complete
 
 #### Substack Article:
-* [What Can Chess Teach Us About Predicting the NBA Playoffs?](https://avishainarsey.substack.com/p/what-can-chess-teach-us-about-predicting)
+* [What Can Chess Teach Us About Predicting The NBA Playoffs?](https://avishainarsey.substack.com/p/what-can-chess-teach-us-about-predicting)
 
 Features:
 * Standard Elo ratings
@@ -133,6 +133,9 @@ This score is the benchmark every subsequent model must beat.
 
 ### Model 1 - Margin of Victory Elo
 ❌ Complete — No Improvement
+
+#### Substack Article:
+* [Is All Winning Created Equal?](https://avishainarsey.substack.com/p/is-all-winning-created-equal)
 
 Additional feature:
 * Incorporates point differential into Elo updates via a parameterised multiplier:
