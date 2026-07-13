@@ -165,7 +165,7 @@ a poor proxy for playoff performance.
 
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-1---margin-of-victory)
 
-### Model 2 - Bayesian Team Strength
+### Model 2 - Home Court Advantage
 🚧 Planned 🚧
 
 Additional feature:
@@ -174,7 +174,7 @@ Additional feature:
 Question:
 * How should uncertainty in team strength affect playoff predictions?
 
-### Model 3 - Home Court Advantage
+### Model 3 - Recent Form
 🚧 Planned 🚧
 
 Additional feature:
@@ -183,7 +183,7 @@ Additional feature:
 Question:
 * How much predictive value does playoff seeding provide?
 
-### Model 4 - Recent Form
+### Model 4 - Matchup Effects
 🚧 Planned 🚧
 
 Additional feature:
@@ -192,7 +192,7 @@ Additional feature:
 Question:
 * Are teams entering the playoffs stronger or weaker than their season-long rating?
 
-### Model 5 - Matchup Effects
+### Model 5 - Bayesian Team Strength
 🚧 Planned 🚧
 
 Additional feature:
