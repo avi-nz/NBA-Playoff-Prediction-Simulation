@@ -34,9 +34,6 @@ SLEEP_BETWEEN_SEASONS = 5
 
 N_SIMULATIONS = 10000
 
-# ---------------------------------------------------------------------------
-# Load existing results so we can skip seasons already completed
-# ---------------------------------------------------------------------------
 
 def load_existing_results():
     try:
@@ -132,9 +129,6 @@ def run_season(season):
     }
 
 
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
@@ -157,10 +151,6 @@ if __name__ == "__main__":
             print(f"  Skipping and continuing...")
 
         time.sleep(SLEEP_BETWEEN_SEASONS)
-
-    # ---------------------------------------------------------------------------
-    # Summary
-    # ---------------------------------------------------------------------------
 
     completed = [r for r in all_results if "brier_score" in r]
 
