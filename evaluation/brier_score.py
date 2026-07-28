@@ -1,4 +1,4 @@
-from teams import TEAM_ID_TO_NAME
+from src.data.teams import TEAM_ID_TO_NAME
 
 
 def championship_brier_score(predicted_probs, actual_champion):

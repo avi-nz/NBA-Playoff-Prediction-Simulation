@@ -18,9 +18,9 @@ four-parameter formula is actually justified.
 import time
 import numpy as np
 from scipy.optimize import minimize
-from data_loader import load_regular_season_games
-from elo import EloModel, EloModelMoV
-from seasons import VALID_SEASONS
+from src.data.data_loader import load_regular_season_games
+from src.models.elo import EloModel, EloModelMoV
+from src.sim.seasons import VALID_SEASONS
 
 # ---------------------------------------------------------------------------
 # Config

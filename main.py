@@ -1,10 +1,10 @@
 from nba_api.stats.endpoints import leaguestandings
-from data_loader import load_regular_season_games, get_champion
-from elo import EloModel, EloModelMoV
-from playoff_simulator import PlayoffSimulator
-from teams import TEAM_ID_TO_NAME
-from brier_score import print_brier_report
-from seasons import VALID_SEASONS
+from src.data.data_loader import load_regular_season_games, get_champion
+from src.models.elo import EloModel, EloModelMoV
+from src.sim.playoff_simulator import PlayoffSimulator
+from src.data.teams import TEAM_ID_TO_NAME
+from evaluation.brier_score import print_brier_report
+from src.sim.seasons import VALID_SEASONS
 
 
 def choose_season():
