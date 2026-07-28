@@ -1,6 +1,6 @@
 from nba_api.stats.endpoints import leaguestandings
 from src.data.data_loader import load_regular_season_games, get_champion
-from src.models.elo import EloModel, EloModelMoV
+from src.models.elo import EloModel, EloModelMoV, EloModelHCA
 from src.sim.playoff_simulator import PlayoffSimulator
 from src.data.teams import TEAM_ID_TO_NAME
 from evaluation.brier_score import print_brier_report
@@ -39,6 +39,7 @@ def choose_model():
     models = {
         "0": ("Model 0 — Baseline Elo", EloModel),
         "1": ("Model 1 — Margin of Victory Elo", EloModelMoV),
+        "2": ("Model 2 — Home Court Advantage", EloModelHCA),
     }
 
     # prints all the models that are available

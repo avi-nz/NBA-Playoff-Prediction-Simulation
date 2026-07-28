@@ -318,3 +318,125 @@ class EloModelMoV(EloModel):
                 "TEAM": away,
                 "ELO": self.ratings[away]
             })
+
+
+class EloModelHCA(EloModel):
+    """
+    Model 2: Home Court Advantage Elo.
+
+    Extends the baseline EloModel by adding a fixed Elo bonus to the
+    home team before calculating win probability. The home team is
+    treated as if they are `home_advantage` Elo points stronger than
+    they actually are for that game only — ratings themselves are never
+    permanently changed by the bonus.
+
+    Neutral site games (NBA Cup) receive no home court bonus since
+    neither team has an actual home court.
+
+    Parameters
+    ----------
+    home_advantage : float
+        Elo points added to the home team's rating before computing
+        win probability and rating updates. Defaults to 100, a common
+        starting point in Elo literature. Can be tuned via tune_hca.py.
+    """
+
+    def __init__(self, k=20, initial_rating=1500, home_advantage=100):
+        super().__init__(k, initial_rating)
+        self.home_advantage = home_advantage
+
+    def win_probability(self, team_a, team_b, home_team=None):
+        """
+        Calculate the expected probability that Team A defeats Team B,
+        optionally applying a home court bonus.
+
+        Parameters
+        ----------
+        team_a : int
+            TEAM_ID of the first team.
+        team_b : int
+            TEAM_ID of the second team.
+        home_team : int or None
+            TEAM_ID of the home team. If None (neutral site), no bonus
+            is applied. If team_a, team_a gets the bonus. If team_b,
+            team_b gets the bonus.
+
+        Returns
+        -------
+        float
+            Expected probability that Team A wins.
+        """
+
+        rating_a = self.ratings[team_a]
+        rating_b = self.ratings[team_b]
+
+        if home_team == team_a:
+            rating_a += self.home_advantage
+        elif home_team == team_b:
+            rating_b += self.home_advantage
+
+        return 1 / (1 + 10 ** (-(rating_a - rating_b) / 400))
+
+    def update_ratings(self, team_a, team_b, winner, home_team=None):
+        """
+        Update Elo ratings using home court adjusted probabilities.
+
+        Parameters
+        ----------
+        team_a : int
+            TEAM_ID of the first team.
+        team_b : int
+            TEAM_ID of the second team.
+        winner : int
+            TEAM_ID of the winning team.
+        home_team : int or None
+            TEAM_ID of the home team. None for neutral site games.
+        """
+
+        prob_a = self.win_probability(team_a, team_b, home_team)
+        actual_a = 1 if winner == team_a else 0
+
+        self.ratings[team_a] += self.k * (actual_a - prob_a)
+        self.ratings[team_b] += self.k * ((1 - actual_a) - (1 - prob_a))
+
+    def fit(self, games):
+        """
+        Fit the HCA Elo model to a season of games.
+
+        HOME_AWAY games pass the home team to update_ratings so the
+        bonus is applied. NEUTRAL site games pass None so no bonus
+        is applied.
+
+        Parameters
+        ----------
+        games : pandas.DataFrame
+            Chronologically ordered regular season games. Must contain
+            a SITE_TYPE column with values "HOME_AWAY" or "NEUTRAL".
+        """
+
+        if not self.ratings:
+            self.initialize_teams(games)
+
+        for _, row in games.iterrows():
+            home = row["HOME_TEAM"]
+            away = row["AWAY_TEAM"]
+
+            winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+
+            home_team = home if row["SITE_TYPE"] == "HOME_AWAY" else None
+
+            self.update_ratings(home, away, winner, home_team)
+
+            self.history.append({
+                "DATE": row["DATE"],
+                "GAME_ID": row["GAME_ID"],
+                "TEAM": home,
+                "ELO": self.ratings[home]
+            })
+
+            self.history.append({
+                "DATE": row["DATE"],
+                "GAME_ID": row["GAME_ID"],
+                "TEAM": away,
+                "ELO": self.ratings[away]
+            })

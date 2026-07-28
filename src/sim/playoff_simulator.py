@@ -8,6 +8,20 @@ class PlayoffSimulator:
     consistent with the Elo model and data loader.
     """
 
+    # NBA playoff home court schedule for a best-of-seven series.
+    # team_a is the higher seed (home in games 1, 2, 5, 7).
+    # team_b is the lower seed (home in games 3, 4, 6).
+    # Index is 1-based (game number).
+    HOME_COURT_SCHEDULE = {
+        1: "team_a",
+        2: "team_a",
+        3: "team_b",
+        4: "team_b",
+        5: "team_a",
+        6: "team_b",
+        7: "team_a",
+    }
+
     def __init__(self, elo_model):
         """
         Initialise the playoff simulator.
@@ -20,7 +34,7 @@ class PlayoffSimulator:
         self.elo = elo_model
 
 
-    def simulate_game(self, team_a, team_b):
+    def simulate_game(self, team_a, team_b, home_team = None):
         """
         Simulate a single game.
 
@@ -35,12 +49,16 @@ class PlayoffSimulator:
             team_id of the winning team.
         """
 
-        prob = self.elo.win_probability(team_a, team_b)
+        if hasattr(self.elo, 'home_advantage'):
+            prob = self.elo.win_probability(team_a, team_b, home_team)
+        else:
+            prob = self.elo.win_probability(team_a, team_b)
 
         if random.random() < prob:
             return team_a
 
         return team_b
+
 
     def simulate_series(self, team_a, team_b):
         """
@@ -65,6 +83,10 @@ class PlayoffSimulator:
         games_played = 0
 
         while wins[team_a] < 4 and wins[team_b] < 4:
+
+            home_label = self.HOME_COURT_SCHEDULE[games_played]
+            home_team = team_a if home_label == "team_a" else team_b
+
             winner = self.simulate_game(team_a, team_b)
 
             wins[winner] += 1
