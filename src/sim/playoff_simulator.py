@@ -8,20 +8,6 @@ class PlayoffSimulator:
     consistent with the Elo model and data loader.
     """
 
-    # NBA playoff home court schedule for a best-of-seven series.
-    # team_a is the higher seed (home in games 1, 2, 5, 7).
-    # team_b is the lower seed (home in games 3, 4, 6).
-    # Index is 1-based (game number).
-    HOME_COURT_SCHEDULE = {
-        1: "team_a",
-        2: "team_a",
-        3: "team_b",
-        4: "team_b",
-        5: "team_a",
-        6: "team_b",
-        7: "team_a",
-    }
-
     def __init__(self, elo_model):
         """
         Initialise the playoff simulator.
@@ -33,8 +19,20 @@ class PlayoffSimulator:
         """
         self.elo = elo_model
 
+    # NBA playoff home court schedule for a best-of-seven series.
+    # team_a is the higher seed (home in games 1, 2, 5, 7).
+    # team_b is the lower seed (home in games 3, 4, 6).
+    HOME_COURT_SCHEDULE = {
+        1: "team_a",
+        2: "team_a",
+        3: "team_b",
+        4: "team_b",
+        5: "team_a",
+        6: "team_b",
+        7: "team_a",
+    }
 
-    def simulate_game(self, team_a, team_b, home_team = None):
+    def simulate_game(self, team_a, team_b, home_team=None):
         """
         Simulate a single game.
 
@@ -42,6 +40,9 @@ class PlayoffSimulator:
         ----------
         team_a : int
         team_b : int
+        home_team : int or None
+            TEAM_ID of the home team. Passed to win_probability so
+            models with home court advantage can apply their bonus.
 
         Returns
         -------
@@ -49,25 +50,26 @@ class PlayoffSimulator:
             team_id of the winning team.
         """
 
-        if hasattr(self.elo, 'home_advantage'):
-            prob = self.elo.win_probability(team_a, team_b, home_team)
-        else:
-            prob = self.elo.win_probability(team_a, team_b)
+        prob = self.elo.win_probability(team_a, team_b, home_team)
 
         if random.random() < prob:
             return team_a
 
         return team_b
 
-
     def simulate_series(self, team_a, team_b):
         """
         Simulate a best-of-seven playoff series.
 
+        team_a is the higher seed and has home court in games 1, 2, 5, 7.
+        team_b is the lower seed and hosts games 3, 4, 6.
+
         Parameters
         ----------
         team_a : int
+            TEAM_ID of the higher seed.
         team_b : int
+            TEAM_ID of the lower seed.
 
         Returns
         -------
@@ -83,14 +85,13 @@ class PlayoffSimulator:
         games_played = 0
 
         while wins[team_a] < 4 and wins[team_b] < 4:
+            games_played += 1
 
             home_label = self.HOME_COURT_SCHEDULE[games_played]
-            home_team = team_a if home_label == "team_a" else team_b
+            home_team  = team_a if home_label == "team_a" else team_b
 
-            winner = self.simulate_game(team_a, team_b)
-
+            winner = self.simulate_game(team_a, team_b, home_team)
             wins[winner] += 1
-            games_played += 1
 
         if wins[team_a] == 4:
             winner = team_a

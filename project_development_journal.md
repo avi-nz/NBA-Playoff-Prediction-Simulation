@@ -1413,4 +1413,4 @@ metric that matters is championship Brier, and that is what future models should
 
 Model 1 is not an improvement on Model 0 by the metric that matters. ***On to Model 2***.
 
-# Model 2 - Bayesian Team Strength
+# Model 2 - Home Court Advantage

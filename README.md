@@ -21,9 +21,11 @@ This project is being documented publicly throughout development.
 2. [Is All Winning Created Equal?](https://avishainarsey.substack.com/p/is-all-winning-created-equal)
 
 ## Overview
-This project explores how accurately NBA playoff outcomes can be predicted using only information available before the playoffs begin.
+This project explores how accurately NBA playoff outcomes can be predicted using only information available 
+*before the playoffs begin*.
 
-The goal is to build a progressively more sophisticated forecasting system and evaluate the contribution of different predictive features, such as:
+The goal is to build a progressively more sophisticated forecasting system and evaluate the contribution of different 
+predictive features, such as:
 
 * Elo ratings
 * Home court advantage
@@ -40,7 +42,7 @@ The final model will simulate thousands of playoff brackets to estimate champion
 This project investigates:
 
 1. How accurately can a simple Elo model predict playoff outcomes?
-2. Which additions provide the largest improvement?
+2. Which additions provide improvement to the baseline Elo Model
     * Home court advantage
     * Margin of Victory
     * Recent form
@@ -140,7 +142,7 @@ This score is the benchmark every subsequent model must beat.
 
 Additional feature:
 * Incorporates point differential into Elo updates via a parameterised multiplier:
-`(point_diff + a)^b / (c + d × elo_diff)`
+$ \frac{(point_{\mathrm{diff}} + a)^b}{c + d \cdot elo_{\mathrm{diff}}} $
 
 Question:
 * Does margin of victory improve playoff forecasting accuracy?
