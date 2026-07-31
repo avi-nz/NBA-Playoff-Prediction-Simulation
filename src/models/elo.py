@@ -238,7 +238,7 @@ class EloModelHCA(EloModel):
         Defaults to 100. Tune with tune_hca.py.
     """
 
-    def __init__(self, k=20, initial_rating=1500, home_advantage=60):
+    def __init__(self, k=20, initial_rating=1500, home_advantage=100):
         super().__init__(k, initial_rating)
         self.home_advantage = home_advantage
 

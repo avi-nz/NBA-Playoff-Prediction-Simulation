@@ -1472,14 +1472,12 @@ which is now paying off.
 
 The model is initialised with a default home advantage of 60 Elo points:
 ```python
-def __init__(self, k=20, initial_rating=1500, home_advantage=60):
+def __init__(self, k=20, initial_rating=1500, home_advantage=100):
 ```
 
-100 is a common starting point in Elo literature (538), roughly equivalent to a 8.5% win probability boost. 
-This also matches historical data, where the home team wins 58%-64% of the time. I wanted to pick the low end of this 
-because...
-1. To be conservative
-2. Data shows, and the eye test confirms, that home court advantage is becoming less of an advantage as the years go by
+100 is a common starting point in Elo literature (538), roughly equivalent to a 14% win probability boost. 
+This also matches historical data, where the home team wins ~64% of the time. One thing to keep in mind though
+is that the data, and the eye test, shows that home court advantage is becoming less of an advantage as the years go by
 
 ### Playoff simulator changes
 
@@ -1550,3 +1548,48 @@ This is exactly the research question Model 2 is designed to investigate.
 Whether this observation holds up across 30 seasons and whether it actually produces a lower Brier score than Model 0
 is what the backtest will tell us.
 
+
+```
+====================================================
+  MODEL 2 — HOME COURT ADVANTAGE — BACKTEST SUMMARY
+====================================================
+  SEASON       CHAMPION                      PRED %     BRIER
+  ----------------------------------------------------------
+  1996-97      Chicago Bulls                  37.6%    0.5253
+  1997-98      Chicago Bulls                  34.0%    0.5484
+  1998-99      San Antonio Spurs              38.2%    0.4293
+  1999-00      Los Angeles Lakers             56.2%    0.2291
+  2000-01      Los Angeles Lakers             15.8%    0.8274
+  2001-02      Los Angeles Lakers              9.0%    0.9895
+  2002-03      San Antonio Spurs              42.4%    0.3970
+  2003-04      Detroit Pistons                11.0%    0.9912
+  2004-05      San Antonio Spurs               4.1%    1.0719
+  2005-06      Miami Heat                      3.6%    1.1547
+  2006-07      San Antonio Spurs               5.3%    1.1998
+  2007-08      Boston Celtics                 54.0%    0.2423
+  2008-09      Los Angeles Lakers             25.6%    0.7758
+  2009-10      Los Angeles Lakers              5.5%    1.0573
+  2010-11      Dallas Mavericks                5.0%    1.1830
+  2011-12      Miami Heat                      8.0%    1.0669
+  2012-13      Miami Heat                     60.9%    0.1860
+  2013-14      San Antonio Spurs              34.4%    0.4737
+  2014-15      Golden State Warriors          49.5%    0.3001
+  2015-16      Cleveland Cavaliers             4.6%    1.2982
+  2016-17      Golden State Warriors          54.8%    0.2397
+  2017-18      Golden State Warriors           3.1%    1.2406
+  2018-19      Toronto Raptors                14.0%    0.8737
+  2019-20      Los Angeles Lakers             16.7%    0.8713
+  2020-21      Milwaukee Bucks                 6.5%    1.0033
+  2021-22      Golden State Warriors           1.6%    1.1448
+  2022-23      Denver Nuggets                  7.0%    1.0318
+  2023-24      Boston Celtics                 50.3%    0.2816
+  2024-25      Oklahoma City Thunder          50.9%    0.3115
+  2025-26      New York Knicks                 3.2%    1.1389
+  ----------------------------------------------------------
+  Average                                              0.7695
+
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier   : 0.7695
+  vs baseline       : -0.1680
+```
