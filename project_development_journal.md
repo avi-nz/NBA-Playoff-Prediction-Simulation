@@ -1414,3 +1414,139 @@ metric that matters is championship Brier, and that is what future models should
 Model 1 is not an improvement on Model 0 by the metric that matters. ***On to Model 2***.
 
 # Model 2 - Home Court Advantage
+
+## The Core Question
+
+Does knowing who has home court in the playoffs improve championship predictions?
+
+### Implementation
+
+The same inheritance pattern from Model 1 was used — a new subclass that only overrides the methods that 
+actually change:
+```python
+class EloModelHCA(EloModel):
+```
+
+This time, only two methods needed changing: `win_probability()` and `update_ratings()`. The `fit()` loop is 
+inherited completely unchanged from the base class.
+
+### Why only these two methods?
+Home court advantage works by adding a fixed Elo bonus to the home team's effective rating before 
+computing win probability. The stored ratings never change permanently, thus the bonus only exists for the 
+duration of that single calculation. So:
+* `win_probability()` needs to know who the home team is so it can apply the bonus
+* `update_ratings()` needs to pass the home team through to `win_probability()`
+
+```python
+def win_probability(self, team_a, team_b, home_team=None):
+
+    rating_a = self.ratings[team_a]
+    rating_b = self.ratings[team_b]
+
+    if home_team == team_a:
+        rating_a += self.home_advantage
+    elif home_team == team_b:
+        rating_b += self.home_advantage
+
+    return 1 / (1 + 10 ** (-(rating_a - rating_b) / 400))
+```
+
+```python
+def update_ratings(self, row):
+
+    home      = row["HOME_TEAM"]
+    away      = row["AWAY_TEAM"]
+    winner    = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+    home_team = home if row["SITE_TYPE"] == "HOME_AWAY" else None
+
+    prob_a   = self.win_probability(home, away, home_team)
+    actual_a = 1 if winner == home else 0
+
+    self.ratings[home] += self.k * (actual_a - prob_a)
+    self.ratings[away] += self.k * ((1 - actual_a) - (1 - prob_a))
+```
+
+Note the `SITE_TYPE` check, neutral site games (NBA Cup) pass None as the home team so no bonus is applied. 
+This is the `SITE_TYPE` column that was added to the data loader all the way back at the start of the project, 
+which is now paying off.
+
+The model is initialised with a default home advantage of 60 Elo points:
+```python
+def __init__(self, k=20, initial_rating=1500, home_advantage=60):
+```
+
+100 is a common starting point in Elo literature (538), roughly equivalent to a 8.5% win probability boost. 
+This also matches historical data, where the home team wins 58%-64% of the time. I wanted to pick the low end of this 
+because...
+1. To be conservative
+2. Data shows, and the eye test confirms, that home court advantage is becoming less of an advantage as the years go by
+
+### Playoff simulator changes
+
+The playoff simulator also needed updating. In the NBA playoffs, the higher seed has home court advantage in
+games 1, 2, 5, and 7. The lower seed hosts games 3, 4, and 6. This schedule was encoded as a class-level dictionary:
+
+```python
+HOME_COURT_SCHEDULE = {
+    1: "team_a",   # higher seed home
+    2: "team_a",
+    3: "team_b",   # lower seed home
+    4: "team_b",
+    5: "team_a",
+    6: "team_b",
+    7: "team_a",
+}
+```
+
+`simulate_series()` now tracks which game number it's on and passes the correct home team to `simulate_game()`
+on every possession:
+```python
+while wins[team_a] < 4 and wins[team_b] < 4:
+    games_played += 1
+
+    home_label = self.HOME_COURT_SCHEDULE[games_played]
+    home_team  = team_a if home_label == "team_a" else team_b
+
+    winner = self.simulate_game(team_a, team_b, home_team)
+    wins[winner] += 1
+```
+
+One subtle thing here, `games_played` is incremented before the schedule lookup, not after. This sounds obvious 
+but it caused a bug in the first version where games_played was still 0 on the first iteration, 
+causing a `KeyError: 0` crash since the schedule is 1-indexed. 😅
+
+--- 
+### An Interesting Early Finding
+Before running the full 30-season backtest, I ran the model on the 2025-26 season to check it was working. 
+The Elo ratings came out as:
+```
+San Antonio Spurs         1710.5
+Oklahoma City Thunder     1703.4
+Detroit Pistons           1662.9
+Boston Celtics            1659.3
+...
+```
+
+The Spurs has a higher Elo than OKC. But the championship odds came out like this:
+```
+Oklahoma City Thunder     28.4%
+San Antonio Spurs         26.2%
+Detroit Pistons           17.6%
+Boston Celtics            13.5%
+...
+```
+OKC has higher championship odds despite having a lower Elo rating. 
+
+The reason is seeding. OKC is the #1 seed in their conference, which means they have home court in every single 
+series they play. That 60 point home advantage can have a significant impact across a full playoff run. 
+Spurs, as a lower seed (2nd seed), has to play road games if they face OKC in the conference finals (which they did
+in real life), they'd be on the road for games 3, 4, and 6 against a team that's already marginally better on a n
+neutral court.
+
+So the model is saying: Spurs are a slightly better team in isolation, but OKC's seeding advantage is worth 
+more than that gap across an entire playoff bracket.
+
+This is exactly the research question Model 2 is designed to investigate. 
+Whether this observation holds up across 30 seasons and whether it actually produces a lower Brier score than Model 0
+is what the backtest will tell us.
+
