@@ -1548,6 +1548,7 @@ This is exactly the research question Model 2 is designed to investigate.
 Whether this observation holds up across 30 seasons and whether it actually produces a lower Brier score than Model 0
 is what the backtest will tell us.
 
+## Backtest Results for model 2
 
 ```
 ====================================================
@@ -1593,3 +1594,163 @@ is what the backtest will tell us.
   Model avg Brier   : 0.7695
   vs baseline       : -0.1680
 ```
+On the surface, Model 2 looks like a small improvement, 0.7695 vs Model 0's 0.7773. 
+That's a 1% reduction in Brier score. But before claiming victory, I ran proper statistical significance tests 
+to check whether this gap is real or just noise.
+
+### Statistical Significance Testing
+Because we are comparing two probabilistic models across 30 seasons, the right approach is to treat each season as 
+one paired observation, one Brier score from Model 0 and one from Model 2, and test whether the differences are 
+consistently in one direction.
+
+The 10,000 Monte Carlo simulations per season are not independent data points. They are repeated draws from the 
+same underlying model, so they cannot be used to inflate sample size. The actual sample size is 30.
+
+Three tests were run:
+```
+Paired t-test
+    T-statistic : 0.8851
+    P-value     : 0.3834
+    Not significant at p<0.05
+
+  Wilcoxon signed-rank test
+    Statistic   : 202.0000
+    P-value     : 0.5425
+    Not significant at p<0.05
+
+  Bootstrap confidence interval (10,000 resamples)
+    Mean difference (Model 0 - Model 2) : +0.0078
+    95% CI : (-0.0096, +0.0248)
+    CI crosses 0 — difference is not statistically significant
+```
+
+And the season-by-season breakdown tells the clearest story of all:
+```
+Model 0 wins : 15/30 seasons
+Model 2 wins : 15/30 seasons
+```
+
+An exact 15-15 split. The models are essentially flipping a coin.
+
+### Conclusion
+Model 2 does not improve on Model 0 in any statistically meaningful way.
+
+The 0.0078 average improvement in Brier score is entirely explained by random variation across seasons. 
+The bootstrap 95% confidence interval runs from -0.0096 to +0.0248, it crosses zero, meaning we cannot rule out 
+that Model 0 is actually better. The p-values from both the t-test (0.38) and Wilcoxon (0.54) 
+are nowhere near the 0.05 threshold.
+
+This is a more honest conclusion than just comparing averages. If we had stopped at "0.7695 < 0.7773, 
+therefore Model 2 is better", that would have been wrong.
+
+I still think Home court does affect the simulation. But across 30 seasons of actual results, that effect doesn't 
+translate into a consistently better champion prediction. The teams that benefit most from home court seeding don't 
+win the championship more often than the model already expects.
+
+#### Next Steps:
+I think that I would be too early to rule out model 2 right now.
+One think that I though of was that not all teams benifit from Home Court Advantage by the same amount. Some teams have
+much greater chance of winning at home than others.
+
+Thus, I think we should try to model this to see if it makes a difference.
+
+The way that I am thinking about doing this is by again using Elo.
+Every team at the start of the season has a home court advantage Elo, lets say that starts at 60.
+Then based on their record at home, it will change. Some teams will have more of a boost, others will have less.
+
+```
+====================================================
+  MODEL 2B — DYNAMIC HOME COURT ADVANTAGE — BACKTEST SUMMARY
+====================================================
+  SEASON       CHAMPION                      PRED %     BRIER
+  ----------------------------------------------------------
+  1996-97      Chicago Bulls                  36.2%    0.5651
+  1997-98      Chicago Bulls                  34.9%    0.5365
+  1998-99      San Antonio Spurs              40.4%    0.3996
+  1999-00      Los Angeles Lakers             55.7%    0.2368
+  2000-01      Los Angeles Lakers             16.3%    0.8210
+  2001-02      Los Angeles Lakers              9.9%    0.9752
+  2002-03      San Antonio Spurs              39.4%    0.4510
+  2003-04      Detroit Pistons                10.6%    0.9838
+  2004-05      San Antonio Spurs               5.5%    1.0367
+  2005-06      Miami Heat                      3.8%    1.1483
+  2006-07      San Antonio Spurs               5.9%    1.1805
+  2007-08      Boston Celtics                 49.9%    0.2865
+  2008-09      Los Angeles Lakers             22.3%    0.8592
+  2009-10      Los Angeles Lakers              3.8%    1.1020
+  2010-11      Dallas Mavericks                3.9%    1.2191
+  2011-12      Miami Heat                      7.3%    1.0877
+  2012-13      Miami Heat                     60.3%    0.2007
+  2013-14      San Antonio Spurs              29.9%    0.5409
+  2014-15      Golden State Warriors          51.9%    0.2730
+  2015-16      Cleveland Cavaliers             4.4%    1.2964
+  2016-17      Golden State Warriors          54.2%    0.2436
+  2017-18      Golden State Warriors           2.0%    1.2472
+  2018-19      Toronto Raptors                14.0%    0.8692
+  2019-20      Los Angeles Lakers             14.8%    0.8979
+  2020-21      Milwaukee Bucks                 6.6%    0.9975
+  2021-22      Golden State Warriors           1.2%    1.1335
+  2022-23      Denver Nuggets                  8.6%    0.9943
+  2023-24      Boston Celtics                 51.8%    0.2690
+  2024-25      Oklahoma City Thunder          54.3%    0.2622
+  2025-26      New York Knicks                 3.3%    1.1347
+  ----------------------------------------------------------
+  Average                                              0.7750
+
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier   : 0.7750
+  vs baseline       : -0.1625
+```
+Interestingly the fixed HCA (0.7695) actually beat the dynamic version (0.7750). Which suggests the added complexity 
+of team-specific HCAs isn't capturing anything useful, or that the regular season home record just isn't a good signal 
+for playoff performance, similar to what we found with margin of victory.
+
+The pattern across Models 1 and 2 is starting to become its own finding: **regular season statistics that you'd expect 
+to matter don't translate cleanly into better playoff champion predictions.** That's actually pretty interesting
+research result in itself, *it suggests the playoffs are noisier or more context-dependent than the regular season data 
+is able to capture*
+
+#### Comparing model 0 to model 2b for good measure:
+```
+======================================================================
+  SIGNIFICANCE TESTS  (H0: no difference between models)
+======================================================================
+
+  Paired t-test
+    T-statistic : 0.2966
+    P-value     : 0.7689
+    Not significant at p<0.05
+
+  Wilcoxon signed-rank test
+    Statistic   : 212.0000
+    P-value     : 0.6850
+    Not significant at p<0.05
+
+  Bootstrap confidence interval (10,000 resamples)
+    Mean difference (Model 0 - Model 2) : +0.0023
+    95% CI : (-0.0132, +0.0170)
+    CI crosses 0 — difference is not statistically significant
+
+======================================================================
+  SUMMARY
+======================================================================
+  Absolute improvement  : +0.0023
+  Relative improvement  : +0.30%
+  Seasons Model 2 wins  : 16/30
+  Paired t-test p-value : 0.7689
+  Wilcoxon p-value      : 0.6850
+  Bootstrap 95% CI      : (-0.0132, +0.0170)
+```
+
+```
+Model 0 wins : 14/30 seasons
+Model 2 wins : 16/30 seasons
+```
+
+As you can see no significant statistical difference.
+
+One thing to consider is that 30 seasons simply may not be enough data to detect a real but small effect.
+
+But, either way, the result is the result. Model 2 is not an improvement. On to Model 3.
+

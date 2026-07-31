@@ -286,3 +286,66 @@ class EloModelHCA(EloModel):
 
         self.ratings[home] += self.k * (actual_a - prob_a)
         self.ratings[away] += self.k * ((1 - actual_a) - (1 - prob_a))
+
+
+# ---------------------------------------------------------------------------
+
+class EloModelDynamicHCA(EloModel):
+    """
+    Model 2b: Dynamic Home Court Advantage Elo.
+
+    Each team has its own HCA rating that evolves through the season
+    based on their actual home record. At the start of each season
+    every team resets to initial_home_advantage.
+
+    win_probability is overridden to apply the team-specific bonus.
+    update_ratings is overridden to also update the home team's HCA
+    after each game.
+
+    Parameters
+    ----------
+    initial_home_advantage : float
+        Starting HCA for every team each season. Default 60.
+    k_hca : float
+        K-factor for HCA updates. Smaller than k so HCAs evolve
+        slowly and stay anchored early in the season.
+    """
+
+    def __init__(self, k=20, initial_rating=1500,
+                 initial_home_advantage=60, k_hca=5):
+        super().__init__(k, initial_rating)
+        self.initial_home_advantage = initial_home_advantage
+        self.k_hca = k_hca
+        self.home_advantages = {}
+
+    def initialize_teams(self, games):
+        super().initialize_teams(games)
+        teams = set(games["HOME_TEAM"]).union(set(games["AWAY_TEAM"]))
+        self.home_advantages = {t: self.initial_home_advantage for t in teams}
+
+    def win_probability(self, team_a, team_b, home_team=None):
+        rating_a = self.ratings[team_a]
+        rating_b = self.ratings[team_b]
+
+        if home_team == team_a:
+            rating_a += self.home_advantages.get(team_a, self.initial_home_advantage)
+        elif home_team == team_b:
+            rating_b += self.home_advantages.get(team_b, self.initial_home_advantage)
+
+        return 1 / (1 + 10 ** (-(rating_a - rating_b) / 400))
+
+    def update_ratings(self, row):
+        # Run the standard Elo update (which already handles home_team
+        # via the base class and our overridden win_probability)
+        super().update_ratings(row)
+
+        # Additionally update the home team's HCA rating
+        home = row["HOME_TEAM"]
+        away = row["AWAY_TEAM"]
+        home_team = home if row["SITE_TYPE"] == "HOME_AWAY" else None
+
+        if home_team is not None:
+            winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+            prob_a = self.win_probability(home, away, home_team)
+            actual_a = 1 if winner == home else 0
+            self.home_advantages[home] += self.k_hca * (actual_a - prob_a)

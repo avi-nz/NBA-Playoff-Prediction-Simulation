@@ -1,6 +1,6 @@
 from nba_api.stats.endpoints import leaguestandings
 from src.data.data_loader import load_regular_season_games, get_champion
-from src.models.elo import EloModel, EloModelMoV, EloModelHCA
+from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA
 from src.sim.playoff_simulator import PlayoffSimulator
 from src.data.teams import TEAM_ID_TO_NAME
 from evaluation.brier_score import print_brier_report

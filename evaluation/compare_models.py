@@ -36,7 +36,7 @@ def load_scores(filepath):
 
 MODEL_FILES = {
     "Model 0 — Baseline Elo":         "../results/backtest_model0.json",
-    "Model 2 — Home Court Advantage":  "../results/backtest_model2.json",
+    "Model 2b — Dynamic Home Court Advantage":  "../results/backtest_model2b.json",
 }
 
 print("Loading results...")
