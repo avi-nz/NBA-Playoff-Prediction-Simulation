@@ -171,21 +171,12 @@ a poor proxy for playoff performance.
 🚧 Planned 🚧
 
 Additional feature:
-* Rating distributions rather than point estimates
-
-Question:
-* How should uncertainty in team strength affect playoff predictions?
-
-### Model 3 - Recent Form
-🚧 Planned 🚧
-
-Additional feature:
 * Home-court Elo bonus
 
 Question:
 * How much predictive value does playoff seeding provide?
 
-### Model 4 - Matchup Effects
+### Model 3 - Recent Form
 🚧 Planned 🚧
 
 Additional feature:
@@ -194,7 +185,7 @@ Additional feature:
 Question:
 * Are teams entering the playoffs stronger or weaker than their season-long rating?
 
-### Model 5 - Bayesian Team Strength
+### Model 4 - Matchup Effects
 🚧 Planned 🚧
 
 Additional feature:
@@ -202,6 +193,15 @@ Additional feature:
 
 Question:
 * Do specific matchups outperform generic team strength estimates?
+
+### Model 5 - Bayesian Team Strength
+🚧 Planned 🚧
+
+Additional feature:
+* Rating distributions rather than point estimates
+
+Question:
+* How should uncertainty in team strength affect playoff predictions?
 
 ### Model 6 - Injury Modelling
 🚧 Planned 🚧
