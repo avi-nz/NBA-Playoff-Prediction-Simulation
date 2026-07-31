@@ -168,13 +168,24 @@ a poor proxy for playoff performance.
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-1---margin-of-victory)
 
 ### Model 2 - Home Court Advantage
-🚧 Planned 🚧
+❌ Complete — No Improvement
+
+#### Substack Article:
+* 
 
 Additional feature:
 * Home-court Elo bonus
 
 Question:
 * How much predictive value does playoff seeding provide?
+
+Answer: **Almost none** 
+
+Results:
+- Fixed HCA:   0.7695 (not significant compared to Model 0, 15-15 season split)
+- Dynamic HCA: 0.7750 (worse than fixed)
+
+[Read the full results in the Project Development Journal](project_development_journal.md/#model-2---home-court-advantage)
 
 ### Model 3 - Recent Form
 🚧 Planned 🚧
