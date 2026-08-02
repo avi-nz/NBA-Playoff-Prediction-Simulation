@@ -94,7 +94,7 @@ Process:
 4. Continue until champion
 
 Repeat:
-10,000 / 50,000 / 100,000+ simulations
+10,000 simulations
 
 Example Output:
 ```
