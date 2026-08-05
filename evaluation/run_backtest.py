@@ -7,7 +7,7 @@ from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHC
 from src.sim.playoff_simulator import PlayoffSimulator
 from evaluation.brier_score import championship_brier_score
 from src.data.teams import TEAM_ID_TO_NAME
-from src.sim.seasons import VALID_SEASONS
+from src.data.seasons import VALID_SEASONS
 
 
 # Seconds to wait between seasons to avoid NBA API rate limiting.

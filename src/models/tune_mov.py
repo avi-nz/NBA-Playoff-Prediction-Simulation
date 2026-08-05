@@ -20,7 +20,7 @@ import numpy as np
 from scipy.optimize import minimize
 from src.data.data_loader import load_regular_season_games
 from src.models.elo import EloModel, EloModelMoV
-from src.sim.seasons import VALID_SEASONS
+from src.data.seasons import VALID_SEASONS
 
 # ---------------------------------------------------------------------------
 # Config
