@@ -90,4 +90,4 @@ def print_brier_report(predicted_probs, actual_champion, season=None):
     n_teams = len(predicted_probs)
     uniform_baseline = (1 - 1 / n_teams) ** 2 + (n_teams - 1) * (1 / n_teams) ** 2
 
-    print(f"\n  Reference: uniform baseline (1/{n_teams} each) = {uniform_baseline:.4f}")
+    print(f"\n  Reference: uniform baseline (1/{n_teams + 1} each) = {uniform_baseline:.4f}")
