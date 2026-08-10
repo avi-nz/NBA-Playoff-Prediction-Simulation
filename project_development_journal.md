@@ -1338,11 +1338,8 @@ mov ** 0.7             0.235950       0.239911
 Tuned 4-param          0.219817       0.220245
 ```
 The most striking result here is `mov ** 0.7` is worse than Model 0 on both sets. This is the
-same shape as the 538 numerator but without the denominator correction. This single result confirms
-the pattern: a concave function of margin without the expectation correction actively harms the model.
+same shape as the 538 numerator but without the denominator correction.
 The denominator is doing most of the work, not the exponent.
-
-
 
 The 538 formula and the tuned formula both improve on Model 0 and hold up on the test seasons, which
 means the improvement is genuine and not overfitting.
@@ -1374,7 +1371,7 @@ tuned parameters.
   Model avg Brier : 0.7875
   vs baseline       : -0.1500
 ```
-Still worse than model 0
+*Still worse than model 0*
 
 This result is, once again, unexpected.
 
@@ -1388,8 +1385,6 @@ I am now going to try 538's parameters and see if that has a better result:
 Both are still worse than Model 0 (0.7773), even though they were better at the game level.
 
 ### Why Does This Happen?
-This is the most interesting result of the whole Model 1 investigation, and it is worth thinking
-through carefully.
 
 At the game level, MoV improves prediction accuracy. The formula produces better calibrated win
 probabilities for individual regular season games.
