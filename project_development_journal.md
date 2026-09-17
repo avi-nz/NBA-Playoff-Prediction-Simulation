@@ -1749,3 +1749,79 @@ One thing to consider is that 30 seasons simply may not be enough data to detect
 
 But, either way, the result is the result. Model 2 is not an improvement. On to Model 3.
 
+# Model 3 - Recent Form
+
+## The Core Question
+Are teams entering the playoffs stronger or weaker than their season-long Elo rating suggests?
+
+## Implementation
+The same inheritance pattern as before
+
+```python
+class EloModelRecentForm(EloModel):
+```
+The idea is straightforward. Not all 82 regular season games should count equally toward a team's final Elo rating. 
+A game played in October tells you less about playoff-ready form than a game played in April. So instead of a 
+fixed K-factor, the model uses one that grows linearly throughout the season:
+
+```python
+def update_ratings(self, row):
+    self.game_count += 1
+
+    progress     = self.game_count / self.total_games
+    k_multiplier = self.k_start_mult + (self.k_end_mult - self.k_start_mult) * progress
+    k_effective  = self.k * k_multiplier
+
+    ...
+
+    self.ratings[home] += k_effective * (actual_a - prob_a)
+    self.ratings[away] += k_effective * ((1 - actual_a) - (1 - prob_a))
+```
+
+With default parameters of `k_start_mult=0.5` and `k_end_mult=1.5`:
+* Game 1 (October): k_effective = 20 × 0.5 = 10
+* Game 41 (midseason): k_effective = 20 × 1.0 = 20 (same as baseline)
+* Game 82 (April): k_effective = 20 × 1.5 = 30
+
+The average K across the season stays at 20, identical to Model 0. The redistribution just moves 
+weight from early games to late games.
+
+### Backtest Results
+Default parameters (k_start_mult=0.5, k_end_mult=1.5):
+
+```
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier   : 0.8065
+  vs baseline       : -0.1310
+```
+
+Worse than Model 0 (0.7773). Manual tuning was done to investigate whether a milder slope would help:
+
+| k_start_mult | k_end_mult |                Avg Brier |
+| -----------: | ---------: | -----------------------: |
+|          0.5 |        1.5 |                   0.8065 |
+|          0.8 |        1.2 |              Improvement |
+|          0.9 |        1.1 |      Further improvement |
+|          1.0 |        1.0 | → Baseline Elo (Model 0) |
+
+The results converge toward Model 0 as the slope flattens. By the time the parameters approach 1.0/1.0, we are 
+simply replicating the baseline model. There is no sweet spot where recent form weighting produces a genuinely 
+better model than the baseline.
+
+### Why Doesn't This Work? — Load Management
+
+The most likely explanation that I can think of is **load management**.
+
+The progressive K-factor assumption is: teams performing well late in the season are genuinely stronger going into 
+the playoffs. But this breaks down for elite contenders. The teams most likely to win the championship are 
+often the same teams most likely to rest their stars in March and April. The 2004-05 Spurs, 2009-10 Lakers, 
+and 2017-18 Warriors all scored below 2% championship probability from this model — these were very dominant teams 
+whose late-season records didn't reflect their true strength because they were deliberately managing player minutes.
+
+The model penalises them for exactly this behaviour, late-season losses carry a heavy K-factor update that pushes 
+their final Elo down, while rewarding fringe playoff teams who were grinding for their playoff seedings right 
+up to game 82.
+
+The load management problem is not a parameter issue. No choice of k_start_mult and k_end_mult fixes it, 
+because the problem is the initial assumption.
