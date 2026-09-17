@@ -14,7 +14,7 @@ This project is being documented publicly throughout development.
 * 🚧 Coming Soon 🚧
 
 #### 📱 Development shorts/reels
-* 🚧 Coming Soon 🚧
+1. [Using Elo ratings to predict NBA champions](https://www.youtube.com/shorts/n90LS2hFiTY)
 
 #### ✍️ Substack articles
 1. [What Can Chess Teach Us About Predicting the NBA Playoffs?](https://avishainarsey.substack.com/p/what-can-chess-teach-us-about-predicting)
@@ -114,6 +114,9 @@ Others       16%
 
 #### Substack Article:
 * [What Can Chess Teach Us About Predicting The NBA Playoffs?](https://avishainarsey.substack.com/p/what-can-chess-teach-us-about-predicting)
+
+#### Youtube short
+* [Using Elo ratings to predict NBA champions](https://www.youtube.com/shorts/n90LS2hFiTY)
 
 Features:
 * Standard Elo ratings
