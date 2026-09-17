@@ -3,7 +3,7 @@ import os
 import time
 from nba_api.stats.endpoints import leaguestandings
 from src.data.data_loader import load_regular_season_games, get_champion
-from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA
+from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA, EloModelRecentForm
 from src.sim.playoff_simulator import PlayoffSimulator
 from evaluation.brier_score import championship_brier_score
 from src.data.teams import TEAM_ID_TO_NAME
@@ -25,10 +25,11 @@ def choose_model():
     """
 
     models = {
-        "0": ("Model 0 — Baseline Elo", EloModel, "../results/backtest_model0.json"),
-        "1": ("Model 1 — Margin of Victory Elo", EloModelMoV, "../results/backtest_model1.json"),
-        "2": ("Model 2 — Home Court Advantage", EloModelHCA, "../results/backtest_model2.json"),
-        "3": ("Model 2b — Dynamic Home Court Advantage", EloModelDynamicHCA, "../results/backtest_model2b.json"),
+        "0": ("Model 0 — Baseline Elo", EloModel, "results/backtest_model0.json"),
+        "1": ("Model 1 — Margin of Victory Elo", EloModelMoV, "results/backtest_model1.json"),
+        "2": ("Model 2 — Home Court Advantage", EloModelHCA, "results/backtest_model2.json"),
+        "3": ("Model 2b — Dynamic Home Court Advantage", EloModelDynamicHCA, "results/backtest_model2b.json"),
+        "4": ("Model 3 — Recent Form", EloModelRecentForm, "results/backtest_model3.json"),
     }
 
     print("\nAvailable models:")

@@ -349,3 +349,50 @@ class EloModelDynamicHCA(EloModel):
             prob_a = self.win_probability(home, away, home_team)
             actual_a = 1 if winner == home else 0
             self.home_advantages[home] += self.k_hca * (actual_a - prob_a)
+
+
+class EloModelRecentForm(EloModel):
+    """
+    Model 3: Recent Form Elo.
+
+    Weights late-season games more heavily than early-season games
+    by scaling K linearly from k_start_mult at game 1 to k_end_mult
+    at the final game of the season.
+
+    Parameters
+    ----------
+    k_start_mult : float
+        K multiplier for the first game. Default 0.5.
+    k_end_mult : float
+        K multiplier for the last game. Default 1.5.
+    """
+
+    def __init__(self, k=20, initial_rating=1500,
+                 k_start_mult=0.5, k_end_mult=1.5):
+        super().__init__(k, initial_rating)
+        self.k_start_mult = k_start_mult
+        self.k_end_mult = k_end_mult
+        self.game_count = 0
+        self.total_games = 0
+
+    def initialize_teams(self, games):
+        super().initialize_teams(games)
+        self.game_count = 0
+        self.total_games = len(games)
+
+    def update_ratings(self, row):
+        self.game_count += 1
+        progress = self.game_count / self.total_games
+        k_multiplier = self.k_start_mult + (self.k_end_mult - self.k_start_mult) * progress
+        k_effective = self.k * k_multiplier
+
+        home = row["HOME_TEAM"]
+        away = row["AWAY_TEAM"]
+        winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+        home_team = home if row["SITE_TYPE"] == "HOME_AWAY" else None
+
+        prob_a = self.win_probability(home, away, home_team)
+        actual_a = 1 if winner == home else 0
+
+        self.ratings[home] += k_effective * (actual_a - prob_a)
+        self.ratings[away] += k_effective * ((1 - actual_a) - (1 - prob_a))
