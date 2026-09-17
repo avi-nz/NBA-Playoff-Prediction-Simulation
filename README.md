@@ -191,13 +191,27 @@ Results:
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-2---home-court-advantage)
 
 ### Model 3 - Recent Form
-🚧 Planned 🚧
+❌ Complete — No Improvement
 
 Additional feature:
-* Late-season performance weighting
+* Progressive K-factor that increases linearly from `k_start_mult` at game 1 to `k_end_mult` at game 82, weighting late-season performance more heavily
 
 Question:
 * Are teams entering the playoffs stronger or weaker than their season-long rating?
+
+Answer: **No** — recent form weighting makes predictions worse, not better.
+
+Results (30 seasons, 1996-97 to 2025-26):
+* Model 0 avg Brier : **0.7773**
+* Model 3 (k_start=0.5, k_end=1.5) : 0.8065 ❌
+* Manual tuning toward 1.0/1.0 improved results incrementally, but only by converging back toward Model 0
+
+The more aggressively late games are weighted, the worse the model performs. 
+The likely explanation is **load management** — elite contenders routinely rest their stars in March and April, 
+so their late-season record underrepresents their true strength. The progressive K-factor punishes them for this, 
+inflating the ratings of fringe playoff teams grinding for seeding right up to game 82.
+
+[Read the full results in the Project Development Journal](project_development_journal.md/#model-3---recent-form)
 
 ### Model 4 - Matchup Effects
 🚧 Planned 🚧
