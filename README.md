@@ -213,16 +213,7 @@ inflating the ratings of fringe playoff teams grinding for seeding right up to g
 
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-3---recent-form)
 
-### Model 4 - Matchup Effects
-🚧 Planned 🚧
-
-Additional feature:
-* Head-to-head regular-season performance
-
-Question:
-* Do specific matchups outperform generic team strength estimates?
-
-### Model 5 - Bayesian Team Strength
+### Model 4 - Bayesian Team Strength
 🚧 Planned 🚧
 
 Additional feature:
@@ -231,7 +222,7 @@ Additional feature:
 Question:
 * How should uncertainty in team strength affect playoff predictions?
 
-### Model 6 - Injury Modelling
+### Model 5 - Injury Modelling
 🚧 Planned 🚧
 
 Additional feature:
