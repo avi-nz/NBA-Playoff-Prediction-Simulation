@@ -396,3 +396,42 @@ class EloModelRecentForm(EloModel):
 
         self.ratings[home] += k_effective * (actual_a - prob_a)
         self.ratings[away] += k_effective * ((1 - actual_a) - (1 - prob_a))
+
+
+class EloModelBayesian(EloModel):
+    """
+    Model 4: Bayesian Team Strength Elo.
+
+    Extends EloModel by treating each team's final Elo rating as the
+    mean of a distribution rather than a point estimate. The spread of
+    that distribution is the standard deviation of the team's Elo
+    ratings throughout the season — a consistent team has a tight
+    distribution, an inconsistent team has a wide one.
+
+    The Elo model itself is unchanged. All the work happens in the
+    playoff simulator: at the start of each Monte Carlo simulation,
+    each team's strength is sampled from Normal(final_rating, std)
+    rather than using the fixed final rating. Over 10,000 simulations
+    this propagates rating uncertainty into championship probabilities.
+
+    No methods need to be overridden — fit(), update_ratings(), and
+    win_probability() are all inherited unchanged. This class only adds
+    get_rating_stds(), which the playoff simulator checks for.
+    """
+
+    def get_rating_stds(self):
+        """
+        Compute each team's Elo standard deviation across the season.
+
+        Uses the full Elo history recorded during fit() to measure how
+        much each team's rating fluctuated. A team that was consistent
+        all season gets a small std; a volatile team gets a large one.
+
+        Returns
+        -------
+        dict
+            {team_id (int): std (float)}
+        """
+
+        history_df = pd.DataFrame(self.history)
+        return history_df.groupby("TEAM")["ELO"].std().to_dict()

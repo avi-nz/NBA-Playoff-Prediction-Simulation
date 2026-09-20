@@ -1825,3 +1825,129 @@ up to game 82.
 
 The load management problem is not a parameter issue. No choice of k_start_mult and k_end_mult fixes it, 
 because the problem is the initial assumption.
+
+
+# Model 5 - Bayesian Team Strength
+
+## The Core Question
+
+How should uncertainty in team strength affect playoff predictions?
+
+### The Idea
+
+Every previous model gave each team a single Elo number. The
+Bayesian model treats that final rating as the *mean* of a distribution rather than
+a fixed value. The spread of that distribution is the standard deviation of the team's
+Elo ratings throughout the season:
+
+- A consistent team whose rating sat between 1630 and 1650 all season → tight
+  distribution, small std
+- A volatile team whose rating swung between 1550 and 1750 → wide distribution,
+  large std
+
+### Implementation
+
+`EloModelBayesian` is the smallest subclass in the entire project. Nothing is overridden,
+`fit()`, `update_ratings()`, and `win_probability()` are all inherited unchanged from
+the base class. The only addition is one new method:
+
+```python
+def get_rating_stds(self):
+    history_df = pd.DataFrame(self.history)
+    return history_df.groupby("TEAM")["ELO"].std().to_dict()
+```
+
+This reads the Elo history that `fit()` was already recording and computes the standard
+deviation per team. The data was always there — this model just uses it for the first time.
+
+The real change lives in `playoff_simulator.py`. At the start of each Monte Carlo
+simulation, instead of using the fixed final ratings, each team's strength is sampled
+from their distribution:
+
+```python
+is_bayesian = hasattr(self.elo, "get_rating_stds")
+
+if is_bayesian:
+    stds = self.elo.get_rating_stds()
+
+for _ in range(n_simulations):
+
+    if is_bayesian:
+        self.elo.ratings = {
+            team: np.random.normal(original_ratings[team], stds.get(team, 0))
+            for team in original_ratings
+        }
+
+    results = self.simulate_playoffs(east, west)
+```
+
+After all simulations, the original ratings are restored. Standard models take the same
+code path as before — the Bayesian block is simply skipped.
+
+---
+
+### Backtest Results
+
+```
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier   : 0.7832
+  vs baseline       : -0.1543
+```
+
+Worse than Model 0 (0.7773), though better than the recent form model and most of the
+margin of victory variants.
+
+---
+
+### Why Doesn't It Help?
+
+The logic is sound and Uncertainty is real in NBA games. But the data doesn't support it helping, and
+the reason becomes clear when you look at what the uncertainty is actually doing.
+
+By sampling from `Normal(final_rating, std)`, the model spreads probability away from
+heavy favourites and toward the field. You can see this directly in the numbers, the
+Bayesian model rarely gives any team above 50% championship probability, even in years
+where one team was clearly dominant:
+
+| Season  | Champion            | Model 0 | Bayesian |
+|---------|---------------------|---------|----------|
+| 1999-00 | Los Angeles Lakers  | 55.6%   | 47.9%    |
+| 2012-13 | Miami Heat          | 55.4%   | 48.9%    |
+| 2016-17 | Golden State Warriors | 51.8% | 45.9%    |
+
+In seasons where the dominant team wins, which is exactly when a confident model scores
+well on Brier, the Bayesian model is less confident, and that costs it. In upset seasons
+it is marginally less wrong, but not enough to compensate.
+
+The underlying issue is that the Elo standard deviation across a regular season is not
+a reliable signal for playoff uncertainty. A team whose rating fluctuated a lot may have
+just had a bumpy schedule, strength of opponent, back-to-backs, injuries. The std captures noise as much 
+as it captures uncertainty about true strength.
+
+There is also something self-defeating about the approach. The teams with the widest
+distributions, the most volatile regular season ratings, are often teams that went on
+a late-season run or collapsed. But a late-season run is exactly what recent form is
+supposed to capture, and we already saw in Model 3 that late-season results are
+misleading due to load management. The Bayesian model compounds this: a team that
+coasted through April has a tighter distribution (their ratings barely moved) while
+a team that was grinding out wins has a wider one, and the wider distribution pushes
+more probability toward the grinders.
+
+---
+
+### Conclusion
+
+Model 4 does not improve on Model 0. The theoretical motivation was sound but the
+available data — Elo standard deviation from regular season results — is not a clean
+signal for playoff uncertainty. A more sophisticated approach would require external
+data sources: injury reports, roster changes, playoff-specific metrics. With only the
+regular season game log, there is no reliable way to distinguish genuine uncertainty
+about a team's strength from noise in their schedule.
+
+
+Model 6 — Injury Modelling — is the last planned feature. Unlike the others, it
+requires external data rather than just the game log, so the implementation approach
+will be different.
+
+

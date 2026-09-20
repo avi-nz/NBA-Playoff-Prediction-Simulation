@@ -19,20 +19,8 @@ class PlayoffSimulator:
         """
         self.elo = elo_model
 
-    # NBA playoff home court schedule for a best-of-seven series.
-    # team_a is the higher seed (home in games 1, 2, 5, 7).
-    # team_b is the lower seed (home in games 3, 4, 6).
-    HOME_COURT_SCHEDULE = {
-        1: "team_a",
-        2: "team_a",
-        3: "team_b",
-        4: "team_b",
-        5: "team_a",
-        6: "team_b",
-        7: "team_a",
-    }
 
-    def simulate_game(self, team_a, team_b, home_team=None):
+    def simulate_game(self, team_a, team_b):
         """
         Simulate a single game.
 
@@ -40,9 +28,6 @@ class PlayoffSimulator:
         ----------
         team_a : int
         team_b : int
-        home_team : int or None
-            TEAM_ID of the home team. Passed to win_probability so
-            models with home court advantage can apply their bonus.
 
         Returns
         -------
@@ -50,7 +35,7 @@ class PlayoffSimulator:
             team_id of the winning team.
         """
 
-        prob = self.elo.win_probability(team_a, team_b, home_team)
+        prob = self.elo.win_probability(team_a, team_b)
 
         if random.random() < prob:
             return team_a
@@ -61,15 +46,10 @@ class PlayoffSimulator:
         """
         Simulate a best-of-seven playoff series.
 
-        team_a is the higher seed and has home court in games 1, 2, 5, 7.
-        team_b is the lower seed and hosts games 3, 4, 6.
-
         Parameters
         ----------
         team_a : int
-            TEAM_ID of the higher seed.
         team_b : int
-            TEAM_ID of the lower seed.
 
         Returns
         -------
@@ -85,13 +65,10 @@ class PlayoffSimulator:
         games_played = 0
 
         while wins[team_a] < 4 and wins[team_b] < 4:
-            games_played += 1
+            winner = self.simulate_game(team_a, team_b)
 
-            home_label = self.HOME_COURT_SCHEDULE[games_played]
-            home_team  = team_a if home_label == "team_a" else team_b
-
-            winner = self.simulate_game(team_a, team_b, home_team)
             wins[winner] += 1
+            games_played += 1
 
         if wins[team_a] == 4:
             winner = team_a
@@ -195,6 +172,12 @@ class PlayoffSimulator:
         """
         Run many playoff simulations.
 
+        For standard Elo models, each simulation uses the fixed final
+        ratings. For EloModelBayesian, each simulation first samples
+        a strength for every team from Normal(final_rating, std) before
+        running the bracket. This propagates rating uncertainty into
+        the championship probability distribution.
+
         Parameters
         ----------
         east : list
@@ -207,14 +190,32 @@ class PlayoffSimulator:
             Championship probabilities, keyed by team_id.
         """
 
+        import numpy as np
+
+        is_bayesian    = hasattr(self.elo, "get_rating_stds")
+        original_ratings = self.elo.ratings.copy()
+
+        if is_bayesian:
+            stds = self.elo.get_rating_stds()
+
         champions = {}
 
         for _ in range(n_simulations):
-            results = self.simulate_playoffs(east, west)
 
+            if is_bayesian:
+                # Sample a strength for every team for this simulation
+                self.elo.ratings = {
+                    team: np.random.normal(original_ratings[team],
+                                           stds.get(team, 0))
+                    for team in original_ratings
+                }
+
+            results  = self.simulate_playoffs(east, west)
             champion = results["champion"]
-
             champions[champion] = champions.get(champion, 0) + 1
+
+        # Restore original ratings after all simulations
+        self.elo.ratings = original_ratings
 
         for team in champions:
             champions[team] /= n_simulations

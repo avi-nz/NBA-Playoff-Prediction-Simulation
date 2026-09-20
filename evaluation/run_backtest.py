@@ -3,7 +3,7 @@ import os
 import time
 from nba_api.stats.endpoints import leaguestandings
 from src.data.data_loader import load_regular_season_games, get_champion
-from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA, EloModelRecentForm
+from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA, EloModelRecentForm, EloModelBayesian
 from src.sim.playoff_simulator import PlayoffSimulator
 from evaluation.brier_score import championship_brier_score
 from src.data.teams import TEAM_ID_TO_NAME
@@ -30,6 +30,7 @@ def choose_model():
         "2": ("Model 2 — Home Court Advantage", EloModelHCA, "results/backtest_model2.json"),
         "3": ("Model 2b — Dynamic Home Court Advantage", EloModelDynamicHCA, "results/backtest_model2b.json"),
         "4": ("Model 3 — Recent Form", EloModelRecentForm, "results/backtest_model3.json"),
+        "5": ("Model 4 — Bayesian Team Strength", EloModelBayesian, "results/backtest_model4.json"),
     }
 
     print("\nAvailable models:")
