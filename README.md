@@ -222,16 +222,29 @@ Additional feature:
 Question:
 * How should uncertainty in team strength affect playoff predictions?
 
-### Model 5 - Injury Modelling
-🚧 Planned 🚧
+### Model 4 - Bayesian Team Strength
+❌ Complete — No Improvement
 
 Additional feature:
-* Injury probabilities 
-* Player impact estimation
-* Team impact when a star player is injured
+* Each team's final Elo rating is treated as the mean of a Normal distribution, with the spread derived from the 
+standard deviation of their Elo ratings throughout the season — consistent teams get tight distributions, volatile 
+teams get wide ones
 
 Question:
-* How much uncertainty do injuries introduce into championship forecasts?
+* How should uncertainty in team strength affect playoff predictions?
+
+Answer: **No improvement** — spreading probability away from heavy favourites hurts more than it helps.
+
+Results (30 seasons, 1996-97 to 2025-26):
+* Model 0 avg Brier : **0.7773**
+* Model 5 avg Brier : 0.7832 ❌
+
+The logic is sound but the data doesn't support it. The Elo standard deviation across a regular season captures 
+schedule noise as much as genuine uncertainty about team strength. In dominant-team years — exactly when confident 
+models score well — the Bayesian model is systematically less confident, and that costs it. 
+The rest is not random enough to compensate.
+
+[Read the full results in the Project Development Journal](project_development_journal.md/#model-5---bayesian-team-strength)
 
 ## Historical Backtesting
 The model will be evaluated on previous NBA seasons.
