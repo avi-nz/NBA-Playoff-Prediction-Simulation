@@ -3,9 +3,14 @@ import os
 import time
 from nba_api.stats.endpoints import leaguestandings
 from src.data.data_loader import load_regular_season_games, get_champion
-from src.models.elo import EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA, EloModelRecentForm, EloModelBayesian
+from src.models.elo import (EloModel, EloModelMoV, EloModelHCA, EloModelDynamicHCA, EloModelRecentForm,
+                            EloModelBayesian, EloModelInjury)
 from src.sim.playoff_simulator import PlayoffSimulator
 from evaluation.brier_score import championship_brier_score
+from src.data.injury_loader import (
+    get_injury_profiles,
+    print_injury_profiles
+)
 from src.data.teams import TEAM_ID_TO_NAME
 from src.data.seasons import VALID_SEASONS
 
@@ -31,6 +36,7 @@ def choose_model():
         "3": ("Model 2b — Dynamic Home Court Advantage", EloModelDynamicHCA, "results/backtest_model2b.json"),
         "4": ("Model 3 — Recent Form", EloModelRecentForm, "results/backtest_model3.json"),
         "5": ("Model 4 — Bayesian Team Strength", EloModelBayesian, "results/backtest_model4.json"),
+        "6": ("Model 5 — Injury Modelling", EloModelInjury, "results/backtest_model5.json"),
     }
 
     print("\nAvailable models:")
@@ -67,17 +73,41 @@ def load_existing_results(results_file):
         return []
 
 
+def setup_injury_model(elo, season, east, west):
+    """
+    Load and attach injury profiles when using the injury model.
+
+    Args:
+        elo: Trained Elo model.
+        season (str): NBA season.
+        east (list[int]): Eastern Conference playoff teams.
+        west (list[int]): Western Conference playoff teams.
+
+    Returns:
+        EloModel: Elo model with injury profiles attached when applicable.
+    """
+
+    if isinstance(elo, EloModelInjury):
+        print("  Loading injury profiles...")
+
+        playoff_teams = east + west
+
+        profiles = get_injury_profiles(
+            season,
+            playoff_teams
+        )
+
+        print_injury_profiles(profiles)
+
+        elo.injury_profiles = profiles
+        elo.reset_injury_log()
+
+    return elo
+
+
 def run_season(season, elo_model_class):
     """
     Run the full backtest pipeline for one season.
-
-    Args:
-        season (str): NBA season string (e.g. '2023-24').
-        elo_model_class: Elo model class to instantiate.
-
-    Returns:
-        dict: Season result with keys: season, brier_score, champion_id,
-              champion_name, champion_predicted_prob, predicted_probs.
     """
 
     print(f"\n{'=' * 52}")
@@ -96,8 +126,11 @@ def run_season(season, elo_model_class):
 
     # --- Playoff seeds ---
     print("  Fetching playoff seedings...")
-    time.sleep(1)  # small pause before the standings call
-    standings = leaguestandings.LeagueStandings(season=season).get_data_frames()[0]
+    time.sleep(1)
+
+    standings = leaguestandings.LeagueStandings(
+        season=season
+    ).get_data_frames()[0]
 
     east = (
         standings[standings["Conference"] == "East"]
@@ -113,23 +146,51 @@ def run_season(season, elo_model_class):
         .tolist()
     )
 
-    # Monte Carlo simulation
-    print(f"  Running {N_SIMULATIONS:,} simulations...")
-    sim = PlayoffSimulator(elo)
-    predicted_probs = sim.simulate_many(east, west, n_simulations=N_SIMULATIONS)
+    # --- Injury modelling ---
+    elo = setup_injury_model(
+        elo,
+        season,
+        east,
+        west
+    )
 
-    # Actual champion
+    # --- Monte Carlo simulation ---
+    print(f"  Running {N_SIMULATIONS:,} simulations...")
+
+    sim = PlayoffSimulator(elo)
+
+    predicted_probs = sim.simulate_many(
+        east,
+        west,
+        n_simulations=N_SIMULATIONS
+    )
+
+    # --- Actual champion ---
     print("  Fetching actual champion...")
     time.sleep(1)
-    champion_id = get_champion(season)
-    champion_name = TEAM_ID_TO_NAME.get(champion_id, str(champion_id))
 
-    # Brier score
-    brier = championship_brier_score(predicted_probs, champion_id)
-    champion_prob = predicted_probs.get(champion_id, 0.0)
+    champion_id = get_champion(season)
+    champion_name = TEAM_ID_TO_NAME.get(
+        champion_id,
+        str(champion_id)
+    )
+
+    # --- Brier score ---
+    brier = championship_brier_score(
+        predicted_probs,
+        champion_id
+    )
+
+    champion_prob = predicted_probs.get(
+        champion_id,
+        0.0
+    )
 
     print(f"  Champion : {champion_name}")
-    print(f"  Model prob for champion : {champion_prob * 100:.1f}%")
+    print(
+        f"  Model prob for champion : "
+        f"{champion_prob * 100:.1f}%"
+    )
     print(f"  Brier score : {brier:.4f}")
 
     return {
@@ -137,10 +198,13 @@ def run_season(season, elo_model_class):
         "brier_score": round(brier, 6),
         "champion_id": champion_id,
         "champion_name": champion_name,
-        "champion_predicted_prob": round(champion_prob, 6),
-        # Store probs with string keys so JSON can serialise them
+        "champion_predicted_prob": round(
+            champion_prob,
+            6
+        ),
         "predicted_probs": {
-            str(k): round(v, 6) for k, v in predicted_probs.items()
+            str(k): round(v, 6)
+            for k, v in predicted_probs.items()
         },
     }
 

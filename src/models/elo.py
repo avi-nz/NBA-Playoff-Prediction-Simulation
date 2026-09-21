@@ -287,35 +287,14 @@ class EloModelHCA(EloModel):
         self.ratings[home] += self.k * (actual_a - prob_a)
         self.ratings[away] += self.k * ((1 - actual_a) - (1 - prob_a))
 
-
-# ---------------------------------------------------------------------------
-
 class EloModelDynamicHCA(EloModel):
-    """
-    Model 2b: Dynamic Home Court Advantage Elo.
-
-    Each team has its own HCA rating that evolves through the season
-    based on their actual home record. At the start of each season
-    every team resets to initial_home_advantage.
-
-    win_probability is overridden to apply the team-specific bonus.
-    update_ratings is overridden to also update the home team's HCA
-    after each game.
-
-    Parameters
-    ----------
-    initial_home_advantage : float
-        Starting HCA for every team each season. Default 60.
-    k_hca : float
-        K-factor for HCA updates. Smaller than k so HCAs evolve
-        slowly and stay anchored early in the season.
-    """
+    """Model 2b: Dynamic Home Court Advantage Elo."""
 
     def __init__(self, k=20, initial_rating=1500,
                  initial_home_advantage=60, k_hca=5):
         super().__init__(k, initial_rating)
         self.initial_home_advantage = initial_home_advantage
-        self.k_hca = k_hca
+        self.k_hca           = k_hca
         self.home_advantages = {}
 
     def initialize_teams(self, games):
@@ -326,112 +305,117 @@ class EloModelDynamicHCA(EloModel):
     def win_probability(self, team_a, team_b, home_team=None):
         rating_a = self.ratings[team_a]
         rating_b = self.ratings[team_b]
-
         if home_team == team_a:
             rating_a += self.home_advantages.get(team_a, self.initial_home_advantage)
         elif home_team == team_b:
             rating_b += self.home_advantages.get(team_b, self.initial_home_advantage)
-
         return 1 / (1 + 10 ** (-(rating_a - rating_b) / 400))
 
     def update_ratings(self, row):
-        # Run the standard Elo update (which already handles home_team
-        # via the base class and our overridden win_probability)
         super().update_ratings(row)
-
-        # Additionally update the home team's HCA rating
-        home = row["HOME_TEAM"]
-        away = row["AWAY_TEAM"]
+        home      = row["HOME_TEAM"]
         home_team = home if row["SITE_TYPE"] == "HOME_AWAY" else None
-
         if home_team is not None:
-            winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
-            prob_a = self.win_probability(home, away, home_team)
+            away     = row["AWAY_TEAM"]
+            winner   = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+            prob_a   = self.win_probability(home, away, home_team)
             actual_a = 1 if winner == home else 0
             self.home_advantages[home] += self.k_hca * (actual_a - prob_a)
 
 
 class EloModelRecentForm(EloModel):
-    """
-    Model 3: Recent Form Elo.
-
-    Weights late-season games more heavily than early-season games
-    by scaling K linearly from k_start_mult at game 1 to k_end_mult
-    at the final game of the season.
-
-    Parameters
-    ----------
-    k_start_mult : float
-        K multiplier for the first game. Default 0.5.
-    k_end_mult : float
-        K multiplier for the last game. Default 1.5.
-    """
+    """Model 3: Recent Form Elo — progressive K-factor."""
 
     def __init__(self, k=20, initial_rating=1500,
                  k_start_mult=0.5, k_end_mult=1.5):
         super().__init__(k, initial_rating)
         self.k_start_mult = k_start_mult
-        self.k_end_mult = k_end_mult
-        self.game_count = 0
-        self.total_games = 0
+        self.k_end_mult   = k_end_mult
+        self.game_count   = 0
+        self.total_games  = 0
 
     def initialize_teams(self, games):
         super().initialize_teams(games)
-        self.game_count = 0
+        self.game_count  = 0
         self.total_games = len(games)
 
     def update_ratings(self, row):
         self.game_count += 1
-        progress = self.game_count / self.total_games
+        progress     = self.game_count / self.total_games
         k_multiplier = self.k_start_mult + (self.k_end_mult - self.k_start_mult) * progress
-        k_effective = self.k * k_multiplier
-
-        home = row["HOME_TEAM"]
-        away = row["AWAY_TEAM"]
-        winner = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
+        k_effective  = self.k * k_multiplier
+        home      = row["HOME_TEAM"]
+        away      = row["AWAY_TEAM"]
+        winner    = home if row["HOME_PTS"] > row["AWAY_PTS"] else away
         home_team = home if row["SITE_TYPE"] == "HOME_AWAY" else None
-
-        prob_a = self.win_probability(home, away, home_team)
+        prob_a   = self.win_probability(home, away, home_team)
         actual_a = 1 if winner == home else 0
-
         self.ratings[home] += k_effective * (actual_a - prob_a)
         self.ratings[away] += k_effective * ((1 - actual_a) - (1 - prob_a))
 
 
 class EloModelBayesian(EloModel):
-    """
-    Model 4: Bayesian Team Strength Elo.
-
-    Extends EloModel by treating each team's final Elo rating as the
-    mean of a distribution rather than a point estimate. The spread of
-    that distribution is the standard deviation of the team's Elo
-    ratings throughout the season — a consistent team has a tight
-    distribution, an inconsistent team has a wide one.
-
-    The Elo model itself is unchanged. All the work happens in the
-    playoff simulator: at the start of each Monte Carlo simulation,
-    each team's strength is sampled from Normal(final_rating, std)
-    rather than using the fixed final rating. Over 10,000 simulations
-    this propagates rating uncertainty into championship probabilities.
-
-    No methods need to be overridden — fit(), update_ratings(), and
-    win_probability() are all inherited unchanged. This class only adds
-    get_rating_stds(), which the playoff simulator checks for.
-    """
+    """Model 5: Bayesian Team Strength — rating distributions."""
 
     def get_rating_stds(self):
-        """
-        Compute each team's Elo standard deviation across the season.
-
-        Uses the full Elo history recorded during fit() to measure how
-        much each team's rating fluctuated. A team that was consistent
-        all season gets a small std; a volatile team gets a large one.
-
-        Returns
-        -------
-        dict
-            {team_id (int): std (float)}
-        """
-
         history_df = pd.DataFrame(self.history)
         return history_df.groupby("TEAM")["ELO"].std().to_dict()
+
+
+class EloModelInjury(EloModel):
+    """
+    Model 6: Injury-Adjusted Elo.
+
+    Before each simulated game, rolls each team's top 5 players
+    against their historical injury rate. Injured players reduce
+    the team's effective Elo by their PIE share × star_impact.
+
+    Parameters
+    ----------
+    star_impact : float
+        Total Elo drop if all top 5 players are unavailable.
+    injury_profiles : dict
+        {team_id: [{"name", "ws_fraction", "injury_rate"}]}
+        Built by injury_loader.get_injury_profiles().
+    """
+
+    def __init__(self, k=20, initial_rating=1500,
+                 star_impact=500, injury_profiles=None):
+        super().__init__(k, initial_rating)
+        self.star_impact     = star_impact
+        self.injury_profiles = injury_profiles or {}
+        self.injury_log      = {}   # {player_name: total injury count across all sim games}
+
+
+    def _elo_penalty(self, team_id):
+        """
+        Roll injuries for a team and return the total Elo penalty.
+        Records any injuries into self.injury_log for post-sim reporting.
+        """
+
+        import random
+
+        players = self.injury_profiles.get(team_id, [])
+        penalty = 0.0
+
+        for player in players:
+            if random.random() < player["injury_rate"]:
+                penalty += player["ws_fraction"] * self.star_impact
+                name = player["name"]
+                self.injury_log[name] = self.injury_log.get(name, 0) + 1
+
+        return penalty
+
+
+    def reset_injury_log(self):
+        """Clear the injury log before a new simulation run."""
+        self.injury_log = {}
+
+
+    def win_probability(self, team_a, team_b, home_team=None):
+        penalty_a = self._elo_penalty(team_a)
+        penalty_b = self._elo_penalty(team_b)
+        rating_a  = self.ratings[team_a] - penalty_a
+        rating_b  = self.ratings[team_b] - penalty_b
+        return 1 / (1 + 10 ** (-(rating_a - rating_b) / 400))
+
