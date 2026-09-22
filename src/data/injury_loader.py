@@ -89,9 +89,22 @@ def get_injury_profiles(season, team_ids, n_players=5):
             profiles[team_id] = []
             continue
 
+        # Exclude traded players — anyone who played fewer than half
+        # the team's games was likely acquired mid-season. Their low GP
+        # reflects time with another team, not injury history, which
+        # would produce wildly inflated injury rates.
+        min_games = team_total_games * 0.5
+        eligible = team_stats[team_stats["GP"] >= min_games].copy()
+
+        if eligible.empty:
+            # Fallback: relax threshold to 25% if nobody qualifies
+            eligible = team_stats[
+                team_stats["GP"] >= team_total_games * 0.25
+            ].copy()
+
         # Select the team's most impactful players by PIE.
         top_players = (
-            team_stats
+            eligible
             .sort_values("PIE", ascending=False)
             .head(n_players)
         )
@@ -108,11 +121,13 @@ def get_injury_profiles(season, team_ids, n_players=5):
 
             games_played = int(row["GP"])
 
-            # Estimate proportion of team games not played.
+            # Injury rate: fraction of team games this player missed.
+            # Because we filtered to players with the team for at least
+            # half the season, this now reflects genuine absences
+            # (injury, rest) rather than mid-season trades.
             injury_rate = max(
                 0.0,
-                (team_total_games - games_played)
-                / team_total_games
+                (team_total_games - games_played) / team_total_games
             )
 
             players.append({
