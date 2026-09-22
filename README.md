@@ -3,6 +3,7 @@
 Using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
 
 ---
+# THE BIG TAKEAWAY LESSON FROM THIS PROJECT:
 
 > *"The biggest lesson that can be read from 70 years of AI research is that general methods
 > that leverage computation are ultimately the most effective, and by a large margin."*
