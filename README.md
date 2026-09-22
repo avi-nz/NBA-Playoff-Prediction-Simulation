@@ -2,6 +2,29 @@
 #### Predicting NBA playoff outcomes using only information available before the playoffs begin.
 Using Elo ratings, Monte Carlo simulation, injury modelling, and statistical analysis.
 
+---
+
+> *"The biggest lesson that can be read from 70 years of AI research is that general methods
+> that leverage computation are ultimately the most effective, and by a large margin."*
+> — Rich Sutton, [The Bitter Lesson](http://www.incompleteideas.net/IncIdeas/BitterLesson.html) (2019)
+
+This project is a small-scale demonstration of that lesson applied to sports prediction.
+Six models were built, each encoding basketball domain knowledge that intuitively should
+improve predictions — margin of victory, home court advantage, recent form, rating
+uncertainty, and player injuries. Every single one either performed worse than the
+baseline or produced no statistically significant improvement.
+
+The baseline model knows nothing about basketball. It only knows who beat whom.
+It was never beaten.
+
+The lesson: the predictive signal is decent, but it is not in the places that ten years
+of watching basketball suggested it would be. A general learning method, given the
+right data and enough compute to discover its own features, would likely find what
+actually moves the needle rather than what human intuition expects should.
+
+---
+
+
 ## Content & Documentation
 
 ### Project Development Journal:
