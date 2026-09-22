@@ -213,14 +213,6 @@ inflating the ratings of fringe playoff teams grinding for seeding right up to g
 
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-3---recent-form)
 
-### Model 4 - Bayesian Team Strength
-🚧 Planned 🚧
-
-Additional feature:
-* Rating distributions rather than point estimates
-
-Question:
-* How should uncertainty in team strength affect playoff predictions?
 
 ### Model 4 - Bayesian Team Strength
 ❌ Complete — No Improvement
