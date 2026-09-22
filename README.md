@@ -276,6 +276,8 @@ is therefore not feasible with publicly available data.
 This feature is left as a direction for future work requiring either a paid data
 provider or a purpose-built historical PDF scraper.
 
+[Read the full results in the Project Development Journal](project_development_journal.md/#model-6---Injury-Modelling)
+
 ## Historical Backtesting
 The model will be evaluated on previous NBA seasons.
 
