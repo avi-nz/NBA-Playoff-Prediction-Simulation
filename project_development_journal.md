@@ -2103,8 +2103,8 @@ failed because elite teams behave differently in the regular season — load man
 experimenting with rotations, coasting through stretches. The regular season is
 background noise around a true signal that only becomes visible in the playoffs.
 
-**The playoffs are genuinely noisy.** With best-of-seven series and 16 teams, a
-single upset changes everything. Even a perfect model would struggle — the champion
+**The playoffs are noisy.** With best-of-seven series and 16 teams, a
+single upset changes everything. Even a perfect model would struggle, the champion
 only has to be "good enough" four times, not "the best team" by a wide margin.
 
 **30 seasons is a small sample for detecting subtle improvements.** The Brier score
