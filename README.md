@@ -15,10 +15,9 @@ improve predictions — margin of victory, home court advantage, recent form, ra
 uncertainty, and player injuries. Every single one either performed worse than the
 baseline or produced no statistically significant improvement.
 
-The baseline model knows nothing about basketball. It only knows who beat whom.
-It was never beaten.
+The baseline model knows nothing about basketball. It only knows who beat whom, and even still it was never beaten
 
-The lesson: the predictive signal is decent, but it is not in the places that ten years
+The lesson: the predictive power of Elo decent, but it is not in the places that ten years
 of watching basketball suggested it would be. A general learning method, given the
 right data and enough compute to discover its own features, would likely find what
 actually moves the needle rather than what human intuition expects should.
