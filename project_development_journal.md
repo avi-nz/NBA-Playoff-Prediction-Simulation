@@ -1951,3 +1951,197 @@ requires external data rather than just the game log, so the implementation appr
 will be different.
 
 
+# Model 6 - Injury Modelling
+
+## The Core Question
+
+How much uncertainty do injuries introduce into championship forecasts?
+
+### Implementation Attempt
+
+A prototype was built using regular season absence rates as a proxy for per-game
+injury probability. For each playoff team, the top 5 players by PIE (Player Impact
+Estimate) were identified. Each player's injury rate was computed as the fraction
+of team games they missed during the regular season:
+
+```python
+injury_rate = (team_total_games - games_played) / team_total_games
+```
+
+Before each simulated game, every player was rolled against their injury rate. If
+injured, their contribution was removed from the team's effective Elo:
+
+```python
+penalty += player["ws_fraction"] * star_impact
+```
+
+Where `ws_fraction` is the player's share of their team's combined PIE, and
+`star_impact` is a constant controlling the total Elo penalty when all top 5
+players are unavailable.
+
+An important bug was caught and fixed during development: the initial version
+included traded players, whose low GP on their new team was being misread as
+a high injury rate. A 20-game player in a 82-game season gets `injury_rate =
+75.6%` — completely wrong for someone who was perfectly healthy and just joined
+the team in February. The fix was to exclude any player who appeared in fewer
+than 50% of the team's games before selecting the top 5.
+
+### Results
+
+```
+  Seasons completed : 30
+  Uniform baseline  : 0.9375
+  Model avg Brier   : 0.8271
+  vs baseline       : -0.1104
+```
+
+Significantly worse than Model 0 (0.7773).
+
+### Why It Doesn't Work
+
+Two fundamental design flaws explain the failure.
+
+**1. Per-game rolling is the wrong model for injuries.**
+
+A player who missed 35% of the regular season had a single injury that kept them
+out for a block of games — not a 35% random chance of missing any individual game.
+The prototype simulated them as randomly available throughout every playoff series.
+In a 7-game series, a player with a 35% absence rate is expected to miss roughly
+2-3 games in *every* simulated series, every season.
+
+You can see this most clearly in 2015-16: Kyrie Irving had a 35.4% rate, Mo
+Williams had 50%. The model effectively played the Cavaliers short-handed throughout
+every simulated Finals while Golden State's roster was near-intact. The result was
+Cavs at 0.8% championship probability, which contributed to the 2015-16 Brier score
+of 1.4751 — the worst single season across the entire project.
+
+**2. Regular season absences cannot be separated from load management.**
+
+Elite players on contending teams deliberately sit out regular season games to
+preserve themselves for the playoffs. Scottie Pippen's 46.3% absence rate in
+1997-98 was partly a foot injury but also deliberate rest. The model treats this
+identically to a player who was genuinely injured and unavailable — but these have
+opposite implications for playoff performance. A rested star is a more dangerous
+playoff opponent. The prototype was penalising the wrong teams.
+
+### What the Correct Implementation Requires
+
+The right approach uses official pre-series injury report statuses — Out, Doubtful,
+Questionable, Probable — rather than regular season absence rates. These statuses
+would be treated as fixed for each series rather than rolled per-game:
+
+```python
+INJURY_PROBABILITIES = {
+    "Out":          1.00,
+    "Doubtful":     0.75,
+    "Questionable": 0.50,
+    "Probable":     0.10,
+    "Available":    0.00,
+}
+```
+
+This models the actual information available before a series starts: we know going
+in that Player A is out, Player B is questionable. Each simulation samples from
+these fixed statuses once per series, not independently per game.
+
+The NBA has only published structured official injury reports since approximately
+2014-15, and historical reports exist only as PDFs. No public API provides clean
+historical injury report data back to 1996. A proper 30-season backtest is not
+feasible with publicly available data. Model 6 is documented as out of scope and
+left as a direction for future work.
+
+---
+
+## Project Conclusion
+
+### What Was Built
+
+A progressively more sophisticated NBA playoff prediction system, evaluated against
+30 seasons of historical data (1996-97 to 2025-26) using the Brier score as the
+primary evaluation metric.
+
+The pipeline:
+1. Load regular season game logs from the NBA API
+2. Train an Elo rating model to estimate team strength
+3. Simulate 10,000 playoff brackets using Monte Carlo simulation
+4. Evaluate championship probability forecasts against actual results
+
+### Model Summary
+
+| Model | Description | Avg Brier | vs Model 0 |
+|-------|-------------|-----------|------------|
+| Model 0 | Baseline Elo | **0.7773** | — |
+| Model 1 | Margin of Victory | 0.8456 | ❌ +0.0683 |
+| Model 2 | Fixed Home Court | 0.7695 | ✓ −0.0078 (not significant) |
+| Model 2b | Dynamic Home Court | 0.7750 | ❌ +0.0023 |
+| Model 3 | Recent Form | 0.8065 | ❌ +0.0292 |
+| Model 5 | Bayesian Uncertainty | 0.7832 | ❌ +0.0059 |
+| Model 6 | Injury Modelling | 0.8271 | ❌ +0.0498 |
+
+### The Core Finding
+
+**Model 0 — simple baseline Elo — was never beaten.**
+
+Fixed home court advantage produced the lowest average Brier score (0.7695) but a
+paired significance test showed 15 wins for Model 0, 15 wins for Model 2, and a
+p-value of 0.38. The improvement was indistinguishable from noise.
+
+Every other feature tested made predictions worse, not better.
+
+This is the most honest and interesting result of the project. The features that
+intuitively should matter — margin of victory, home court, recent form, uncertainty,
+injuries — don't reliably translate into better playoff championship predictions when
+evaluated across 30 seasons.
+
+### Why This Might Be
+
+Several patterns emerged across the models that suggest *why* this is the case:
+
+**The regular season is a poor proxy for playoff performance.** Features derived
+from regular season data (margin of victory, recent form, absence rates) repeatedly
+failed because elite teams behave differently in the regular season — load managing,
+experimenting with rotations, coasting through stretches. The regular season is
+background noise around a true signal that only becomes visible in the playoffs.
+
+**The playoffs are genuinely noisy.** With best-of-seven series and 16 teams, a
+single upset changes everything. Even a perfect model would struggle — the champion
+only has to be "good enough" four times, not "the best team" by a wide margin.
+
+**30 seasons is a small sample for detecting subtle improvements.** The Brier score
+differences between models were often in the third decimal place. With 30
+observations, the confidence intervals are wide enough to make most differences
+statistically invisible.
+
+### What Would Actually Help
+
+The most likely paths to genuine improvement based on what was learned:
+
+1. **Elo carry-over between seasons.** Starting every team at 1500 in October ignores
+   that last year's champion is probably still good. A partial carry-over (e.g. 75%
+   of prior season's final rating + 25% of 1500) would prevent the model from
+   treating the reigning champions as equal to the worst team in the league on
+   opening night.
+
+2. **Playoff-specific Elo.** Train separate Elo ratings on playoff game results only.
+   Some teams consistently overperform their regular season rating in the playoffs
+   (well-coached defensive teams) and some underperform (regular-season statistical
+   teams that can't close out series). A model that learns from playoff results
+   specifically might capture this.
+
+3. **Pre-series injury status data.** The correct injury model requires official
+   pre-series availability data, not regular season absence rates. This data exists
+   for recent seasons but not historically at scale.
+
+### Final Brier Score Reference
+
+```
+Uniform baseline (1/16 each) : 0.9375
+Model 0 (baseline Elo)       : 0.7773
+Best achieved (Model 2)      : 0.7695  (not statistically significant)
+```
+
+Beating the uniform baseline by 0.16 across 30 seasons confirms the Elo signal is
+real and meaningful. The model knows something. What it doesn't know — and what
+none of the additional features could teach it — is how to separate genuine team
+quality signals from regular season noise well enough to outperform the simple
+baseline.

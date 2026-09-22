@@ -246,6 +246,44 @@ The rest is not random enough to compensate.
 
 [Read the full results in the Project Development Journal](project_development_journal.md/#model-5---bayesian-team-strength)
 
+### Model 5 - Injury Modelling
+⚠️ Out of Scope — Data Constraints
+
+Additional feature:
+* Per-game player availability probabilities based on official injury reports
+* Player impact weighting by PIE share
+* Elo penalty scaled by the importance of unavailable players
+
+Question:
+* How much uncertainty do injuries introduce into championship forecasts?
+
+A prototype was implemented using regular season absence rates as a proxy for
+per-game injury probability. This produced worse results than Model 0 (avg Brier
+0.8271 vs 0.7773) due to two fundamental design flaws:
+
+1. **Per-game rolling is wrong.** A player who missed 35% of the regular season
+   had one injury that sidelined them for a block of games — not a 35% chance of
+   missing any given playoff game independently. The prototype simulated them as
+   randomly available throughout every playoff series, which is not how injuries work.
+
+2. **Regular season absences include load management.** Elite players on contending
+   teams deliberately sit out regular season games to rest for the playoffs. The model
+   cannot distinguish genuine injury risk from strategic rest, and these have opposite
+   implications for playoff performance.
+
+The correct implementation requires official NBA injury report data — pre-series
+availability statuses (Out / Doubtful / Questionable / Probable) for each player
+going into each playoff round. These would be treated as fixed series-level statuses
+rather than per-game rolls.
+
+The NBA has only published structured official injury reports since approximately
+2014-15, and historical reports exist only as PDFs. No public API provides clean
+historical injury report data back to 1996. A proper backtest across 30 seasons
+is therefore not feasible with publicly available data.
+
+This feature is left as a direction for future work requiring either a paid data
+provider or a purpose-built historical PDF scraper.
+
 ## Historical Backtesting
 The model will be evaluated on previous NBA seasons.
 
